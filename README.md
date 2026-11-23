@@ -1,6 +1,6 @@
 <h1 align="center">maply</h1>
 
-<p align="center"><strong>One place a day. Pin it on the map. The answer comes at 20:00.</strong><br/>A daily geo-guessing game for Telegram groups, built as a Go bot with a Mini App.</p>
+<p align="center"><strong>A daily geo-guessing game for Telegram.</strong><br/>Every morning one street panorama, the same for every chat. Everyone drops a pin in the Mini App; the place, the scores and the chat's table come at 20:00.</p>
 
 <p align="center">
   <a href="#status"><img src="https://img.shields.io/badge/status-beta-245A3C?style=for-the-badge&labelColor=0f172a" alt="status"></a>
@@ -35,10 +35,9 @@ maply is deliberately narrow:
 | Not another chatterbot | At most three group messages a day: post, intrigue, result |
 | Something to talk about | One honest hint between 16:00 and 18:00, then the reveal |
 | A reason to come back | Streaks, a chat leaderboard, free play between days, a share line without spoilers |
-| Familiar stack | Go, the family's `tg` client, shared Asterfield `core` |
 
-> **Result:** a five-minute ritual that the whole chat plays at its own pace and
-> argues about in the evening.
+> **Result:** one short game a day inside the chat, with the place, the scores
+> and the chat's table at 20:00.
 
 ---
 
@@ -49,7 +48,7 @@ maply is deliberately narrow:
 | Stable | — | Nothing stable yet |
 | Beta | `v0.1.0-beta.1` | Play as [@maplyin_bot](https://t.me/maplyin_bot) or on [maply.ws04.cc](https://maply.ws04.cc/): the daily round, free play with leaderboards, profiles and sign-in on the site |
 
-The game is playable end to end: the morning post, the answer and its score,
+Each day brings the morning post, the answer and its score,
 the evening result with a map card, the world ranking and a website where
 anyone can play without Telegram. Between days there is free play: alone,
 against the clock, from the archive of past days, as a challenge or with
