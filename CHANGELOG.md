@@ -11,6 +11,25 @@ See [`docs/versioning.md`](docs/versioning.md) for what the numbers mean and
 
 ## Unreleased
 
+### Changed
+
+- The texts say what they mean. The message field placeholder was "One
+  place a day, one pin"; it now says to press Play or send a location.
+  "Until the truth" is "until the result", the pin toasts and the loading
+  line say what happened instead of joking, and a quiet group is told how
+  to resume without a nap and an emoji. All sixteen languages.
+- Ukrainian calls the map pin "мітка" instead of "шпилька", and the
+  profile's "hide me" note no longer says that nobody, the owner
+  included, can open the profile.
+- The privacy page names the site by `APP_URL` instead of a fixed
+  `maply.ws04.cc`, so moving the domain needs no text change.
+
+### Added
+
+- The privacy page says what the data is used for, what maply gets from
+  Google and how it is kept and erased, and who runs maply. Google's brand
+  verification asked for it.
+
 ## v0.1.0-beta.1 - 2026-11-23
 
 For the operator: this release applies migrations 031 and 032. Pull the image
