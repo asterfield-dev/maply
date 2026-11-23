@@ -11,6 +11,15 @@ See [`docs/versioning.md`](docs/versioning.md) for what the numbers mean and
 
 ## Unreleased
 
+### Changed
+
+- `harvest.py` counts why a region gave no frame (no frame since 2018, no
+  panorama, none at quality 0.7, too narrow, too soft, and so on), per country
+  of the plan, and prints it with `<out>/rejects.json`. A run that yields
+  nothing in a country now says at which step. `scripts/curation/test_curation.py`
+  checks offline which parts of Ukraine the plan covers and what the counter
+  reports.
+
 ## v0.1.0-beta.1 - 2026-11-23
 
 For the operator: this release applies migrations 031 and 032. Pull the image
