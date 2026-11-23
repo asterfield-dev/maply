@@ -197,3 +197,30 @@ func TestARequestThatSignsForItselfIsNobodyOnTheSite(t *testing.T) {
 		}
 	}
 }
+
+// The about page is the home page Google's brand review reads: it names the
+// app and the site, links the privacy page in its language and the owner's
+// Telegram, and leaves no placeholder behind.
+func TestAboutExplainsTheAppWithoutScript(t *testing.T) {
+	svc := New(Config{Key: []byte("k1"), AppURL: "https://maply.example.org/"})
+	for _, lang := range i18n.Codes() {
+		rec := httptest.NewRecorder()
+		svc.About().ServeHTTP(rec, httptest.NewRequest("GET", "/about?lang="+lang, nil))
+		body := rec.Body.String()
+		if rec.Code != http.StatusOK || !strings.Contains(body, "<h1>maply") {
+			t.Errorf("about in %s = %d without the app's name as its title", lang, rec.Code)
+		}
+		for _, want := range []string{
+			`<a href="https://t.me/amtiyo" dir="ltr">@amtiyo</a>`,
+			`<a href="/privacy?lang=` + lang + `">`,
+			"maply.example.org", "@maplyin_bot", "openid", `href="/about?lang=ar"`,
+		} {
+			if strings.Count(body, want) != 1 {
+				t.Errorf("about in %s has %q %d times, want once", lang, want, strings.Count(body, want))
+			}
+		}
+		if strings.Contains(body, "{site}") || strings.Contains(body, "{privacy}") || strings.Contains(body, "{contact}") || strings.Contains(body, "<script") || strings.Contains(body, "&lt;a") {
+			t.Errorf("about in %s leaves a placeholder, a script or an escaped link", lang)
+		}
+	}
+}

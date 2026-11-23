@@ -67,13 +67,20 @@ func (b *Bot) keyboard(lang string) telegram.Keyboard {
 }
 
 // sendKeyboard puts the keyboard under a DM's input field, in lang. Any
-// other chat gets nothing.
+// other chat gets nothing. Telegram sets a keyboard only with a message, and
+// the keyboard outlives it: the message goes at once, so the chat keeps the
+// buttons and no line that names them.
 func (b *Bot) sendKeyboard(ctx context.Context, chat tg.Chat, lang string) error {
 	if chat.Type != "private" {
 		return nil
 	}
-	if _, err := b.tg.SendKeyboard(ctx, chat.ID, i18n.T(lang, "kb.ready"), b.keyboard(lang)); err != nil {
+	m, err := b.tg.SendKeyboard(ctx, chat.ID, i18n.T(lang, "kb.ready"), b.keyboard(lang))
+	if err != nil {
 		return fmt.Errorf("send keyboard to %d: %w", chat.ID, err)
+	}
+	if err := b.tg.DeleteMessage(ctx, chat.ID, m.MessageID); err != nil {
+		// The line stays in the chat; the keyboard works all the same.
+		b.log.Warn("keyboard message not deleted", "error", err)
 	}
 	return nil
 }

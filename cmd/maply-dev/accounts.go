@@ -57,6 +57,7 @@ func mountAccounts(e *Env, mux *http.ServeMux) {
 	e.API.Accounts = svc
 	mux.Handle("/auth/", svc.Middleware(svc.Handler()))
 	mux.Handle("GET /privacy", svc.Privacy())
+	mux.Handle("GET /about", svc.About())
 	mux.HandleFunc("GET /dev/accounts/list", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 		_, _ = w.Write([]byte(accountsList(r.Context(), e)))

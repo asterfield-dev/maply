@@ -229,6 +229,7 @@ func run(log *slog.Logger) error {
 	mux.Handle("/face/", game)
 	mux.Handle("/auth/", accounts.Middleware(accounts.Handler()))
 	mux.Handle("GET /privacy", accounts.Privacy())
+	mux.Handle("GET /about", accounts.About())
 	mux.Handle("/thumb/", game)
 	mux.Handle("/og/", game)
 	if cards != nil {
