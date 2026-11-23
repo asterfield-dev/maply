@@ -101,9 +101,12 @@ func (s *Service) Privacy() http.Handler {
 			"Back": i18n.T(lang, "acct.privacy.back"), "Languages": i18n.T(lang, "acct.privacy.languages"),
 			"Sections": []privacySection{
 				{i18n.T(lang, "acct.privacy.keep_h"), items("acct.privacy.keep")},
+				{i18n.T(lang, "acct.privacy.use_h"), items("acct.privacy.use")},
+				{i18n.T(lang, "acct.privacy.google_h"), items("acct.privacy.google")},
 				{i18n.T(lang, "acct.privacy.see_h"), items("acct.privacy.see")},
 				{i18n.T(lang, "acct.privacy.not_h"), items("acct.privacy.not")},
 				{i18n.T(lang, "acct.privacy.delete_h"), items("acct.privacy.delete")},
+				{i18n.T(lang, "acct.privacy.who_h"), items("acct.privacy.who")},
 			},
 		}
 		if lang == "ar" {
