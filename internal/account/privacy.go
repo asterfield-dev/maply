@@ -51,13 +51,13 @@ nav a[aria-current] { color: var(--ink); }
 </head>
 <body>
 <main>
-<header><a class="mark" href="/">maply</a><a href="/">{{.Back}}</a></header>
+<header><a class="mark" href="/">maply</a><a href="{{.BackHref}}">{{.Back}}</a></header>
 <h1>{{.Title}}</h1>
 <p>{{.Intro}}</p>
 {{range .Sections}}<h2>{{.Head}}</h2>
 <ul>{{range .Items}}<li>{{.}}</li>{{end}}</ul>
 {{end}}
-<nav aria-label="{{.Languages}}">{{range .Langs}}<a href="/privacy?lang={{.Code}}" hreflang="{{.Code}}" lang="{{.Code}}"{{if .Current}} aria-current="page"{{end}}>{{.Name}}</a>{{end}}</nav>
+<nav aria-label="{{.Languages}}">{{range .Langs}}<a href="{{$.Path}}?lang={{.Code}}" hreflang="{{.Code}}" lang="{{.Code}}"{{if .Current}} aria-current="page"{{end}}>{{.Name}}</a>{{end}}</nav>
 </main>
 </body>
 </html>
@@ -86,28 +86,47 @@ func (s *Service) siteHost(r *http.Request) string {
 // Privacy serves /privacy in ?lang=, else the browser's first language maply
 // speaks, else English.
 func (s *Service) Privacy() http.Handler {
+	return s.textPage("/privacy", "acct.privacy.title", "acct.privacy.intro", "acct.privacy.back", "/",
+		"keep", "use", "google", "see", "not", "delete", "who")
+}
+
+// About serves /about the same way: what maply is and how to play, for
+// whoever has no Telegram and no script, Google's brand review among them.
+// It is the home page the sign-in screen names.
+func (s *Service) About() http.Handler {
+	return s.textPage("/about", "acct.about.title", "acct.about.intro", "acct.about.back", "/",
+		"play", "account", "photos", "who")
+}
+
+// The links a line of a text page may carry: "{contact}" is the owner's
+// Telegram, "{privacy}" the privacy page in the page's language.
+func pageLine(lang, line string) template.HTML {
+	out := strings.ReplaceAll(template.HTMLEscapeString(line), "{contact}", privacyContact)
+	privacy := `<a href="/privacy?lang=` + lang + `">` + template.HTMLEscapeString(i18n.T(lang, "acct.privacy.title")) + `</a>`
+	return template.HTML(strings.ReplaceAll(out, "{privacy}", privacy))
+}
+
+// textPage serves one of the static pages: a title, an intro and sections
+// whose keys are prefix+"."+name+"_h" for the head and prefix+"."+name for
+// the lines, one item per line.
+func (s *Service) textPage(path, titleKey, introKey, backKey, backHref string, sections ...string) http.Handler {
+	prefix := strings.TrimSuffix(titleKey, ".title")
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		lang := privacyLangOf(r)
-		items := func(key string) []template.HTML {
-			var out []template.HTML
-			for _, line := range strings.Split(i18n.T(lang, key), "\n") {
-				out = append(out, template.HTML(strings.ReplaceAll(template.HTMLEscapeString(line), "{contact}", privacyContact)))
+		site := s.siteHost(r)
+		var secs []privacySection
+		for _, name := range sections {
+			var items []template.HTML
+			for _, line := range strings.Split(i18n.T(lang, prefix+"."+name, "site", site), "\n") {
+				items = append(items, pageLine(lang, line))
 			}
-			return out
+			secs = append(secs, privacySection{i18n.T(lang, prefix+"."+name+"_h"), items})
 		}
 		data := map[string]any{
-			"Lang": lang, "Dir": "ltr",
-			"Title": i18n.T(lang, "acct.privacy.title"), "Intro": i18n.T(lang, "acct.privacy.intro", "site", s.siteHost(r)),
-			"Back": i18n.T(lang, "acct.privacy.back"), "Languages": i18n.T(lang, "acct.privacy.languages"),
-			"Sections": []privacySection{
-				{i18n.T(lang, "acct.privacy.keep_h"), items("acct.privacy.keep")},
-				{i18n.T(lang, "acct.privacy.use_h"), items("acct.privacy.use")},
-				{i18n.T(lang, "acct.privacy.google_h"), items("acct.privacy.google")},
-				{i18n.T(lang, "acct.privacy.see_h"), items("acct.privacy.see")},
-				{i18n.T(lang, "acct.privacy.not_h"), items("acct.privacy.not")},
-				{i18n.T(lang, "acct.privacy.delete_h"), items("acct.privacy.delete")},
-				{i18n.T(lang, "acct.privacy.who_h"), items("acct.privacy.who")},
-			},
+			"Lang": lang, "Dir": "ltr", "Path": path, "BackHref": backHref,
+			"Title": i18n.T(lang, titleKey), "Intro": i18n.T(lang, introKey, "site", site),
+			"Back": i18n.T(lang, backKey), "Languages": i18n.T(lang, "acct.privacy.languages"),
+			"Sections": secs,
 		}
 		if lang == "ar" {
 			data["Dir"] = "rtl"
@@ -124,7 +143,7 @@ func (s *Service) Privacy() http.Handler {
 		data["Langs"] = langs
 		var buf bytes.Buffer
 		if err := privacyPage.Execute(&buf, data); err != nil {
-			s.log.Error("privacy page", "error", errClass(err))
+			s.log.Error("text page", "path", path, "error", errClass(err))
 			http.Error(w, "internal error", http.StatusInternalServerError)
 			return
 		}

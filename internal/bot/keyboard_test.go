@@ -61,6 +61,10 @@ func TestStartSendsTheKeyboardInDMsOnly(t *testing.T) {
 	if len(client.keyboards) != 1 || len(client.sends) != 1 {
 		t.Fatalf("keyboards = %d, sends = %d, want the keyboard and the panel", len(client.keyboards), len(client.sends))
 	}
+	// The line that carries the keyboard leaves the chat at once.
+	if len(client.deleted) != 1 || client.deleted[0] != 101 {
+		t.Fatalf("deleted = %v, want the keyboard's message", client.deleted)
+	}
 	k := client.keyboards[0]
 	if k.chatID != userID || k.text != i18n.T("ru", "kb.ready") || k.kb.Placeholder != i18n.T("ru", "kb.placeholder") {
 		t.Fatalf("keyboard = %+v", k)

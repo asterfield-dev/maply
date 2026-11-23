@@ -11,6 +11,19 @@ See [`docs/versioning.md`](docs/versioning.md) for what the numbers mean and
 
 ## Unreleased
 
+### Added
+
+- `/about` says what maply is, how to play in Telegram and on the site, what
+  Google sign-in gives maply and where the panoramas come from, in all sixteen
+  languages, as plain HTML without a script. Google's brand review could not
+  read the home page, which is the Mini App, and refused the brand; `/about`
+  is the home page the sign-in screen names now.
+
+### Changed
+
+- The line that carries the DM keyboard ("Buttons below: play, today's result
+  and the menu") is deleted as soon as it is sent. The keyboard stays.
+
 ## v0.1.0-rc.1 - 2026-11-23
 
 For the operator: no migrations. Pull the image from
