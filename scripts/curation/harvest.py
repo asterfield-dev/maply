@@ -16,8 +16,14 @@ around a village.
 A panorama softer than MAPLY_MIN_SHARP (see sharpness) is passed over for
 another frame, and MAPLY_AVOID keeps the batch clear of the other pool's
 places (see avoid.py).
+
+A region that gives no frame says why: every pass over a tile or a frame is
+counted by step, per country of the plan (per region for the built-in list),
+printed at the end and written to <out>/rejects.json. So a country that yields
+nothing shows whether the tiles hold no frames, no panoramas, only panoramas
+under the quality bar, or only narrow or soft ones.
 """
-import io, json, math, os, random, sys, time, urllib.request, concurrent.futures as cf
+import collections, io, json, math, os, random, sys, threading, time, urllib.request, concurrent.futures as cf
 import mapbox_vector_tile
 from PIL import Image, ImageDraw, ImageFilter, ImageFont, ImageStat
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -37,6 +43,13 @@ AVOID = avoid.from_env()
 # Gaussian blur of 1.5 px brings every frame tried below 280.
 MIN_SHARP = float(os.environ.get("MAPLY_MIN_SHARP", "350"))
 MIN_WIDTH = int(os.environ.get("MAPLY_MIN_WIDTH", "2048"))
+REJECTS = collections.defaultdict(collections.Counter)
+_rejects_lock = threading.Lock()
+
+def count(key, why):
+    with _rejects_lock:
+        REJECTS[key][why] += 1
+
 LAPLACE = ImageFilter.Kernel((3, 3), (0, 1, 0, 1, -4, 1, 0, 1, 0), scale=1, offset=128)
 
 def get(url, timeout=60):
@@ -89,6 +102,7 @@ def harvest(region):
         inner, kind = region.get("inner", 0), region.get("kind", "city")
     else:
         (name, lat, lon, km), inner, kind = region, 0, "city"
+    key = (region.get("country") if isinstance(region, dict) else None) or name
     # Roads far from town are often empty: more tries.
     for _ in range(12 if kind == "nature" or PANO_ONLY else 5):
         tlat, tlon = random_point(lat, lon, km, inner)
@@ -96,9 +110,13 @@ def harvest(region):
         try:
             t = mapbox_vector_tile.decode(get(f"https://tiles.mapillary.com/maps/vtp/mly1_public/2/14/{x}/{y}?access_token={TOKEN}"))
         except Exception:
+            count(key, "tile not loaded")
             continue
         raw = [f for f in t.get("image", {}).get("features", [])
                if (f["properties"].get("captured_at") or 0) >= MIN_TS]
+        if not raw:
+            count(key, "no frame since 2018 in the tile")
+        tile_panos = sum(1 for f in raw if f["properties"].get("is_pano"))
         if kind == "town":
             # The frames nearest the town's centre, not the bypass road.
             def far(f):
@@ -110,28 +128,39 @@ def harvest(region):
         flats = [f for f in feats if not f.get("is_pano") and (f.get("quality_score") or 0) >= 0.75]
         pool = panos if PANO_ONLY else (panos or flats)
         if not pool:
+            if raw and not any(f.get("is_pano") for f in feats):
+                count(key, "frames, none a panorama" if not tile_panos else "panoramas only beyond the 40 nearest frames")
+            elif raw:
+                count(key, "panoramas, none at quality 0.7")
             continue
         for f in random.sample(pool, min(3, len(pool))):
             if AVOID and AVOID.taken(f["id"]):
+                count(key, "frame is in the other pool")
                 continue
             try:
                 meta = json.loads(get(f"https://graph.mapillary.com/{f['id']}?fields={FIELDS}&access_token={TOKEN}"))
                 lo, la = meta["geometry"]["coordinates"]
                 if AVOID and AVOID.why(la, lo):
+                    count(key, "near a place of the other pool")
                     continue
                 im = Image.open(io.BytesIO(get(meta["thumb_2048_url"]))).convert("RGB")
             except Exception:
+                count(key, "frame not loaded")
                 continue
             w, h = im.size
             pano = bool(meta.get("is_pano"))
             if pano and abs(w / h - 2) > 0.05:
+                count(key, "panorama not 2:1")
                 continue
             # A panorama under 2048 px wide is soft in the game, -sharpen or not.
             if pano and w < MIN_WIDTH:
+                count(key, "panorama under 2048 px")
                 continue
             sharp = sharpness(im) if pano else None
             if pano and sharp < MIN_SHARP:
+                count(key, "panorama softer than MIN_SHARP")
                 continue
+            count(key, "TAKEN")
             return {"region": name, "kind": kind, "country": region.get("country") if isinstance(region, dict) else None,
                     "source": "mapillary", "source_id": str(f["id"]), "lat": la, "lon": lo,
                     "is_pano": pano, "sharpness": round(sharp) if sharp is not None else None,
@@ -176,6 +205,10 @@ def main():
             d.text((x + 8, y + 2), label, fill="white", font=font)
         sheet.save(f"{OUT}/sheet-{k // 30 + 1}.jpg", quality=82)
     print(f"candidates: {len(cands)} of {len(regions)} regions, sheets: {(len(cands) + 29) // 30}")
+    report = {k: dict(v.most_common()) for k, v in sorted(REJECTS.items())}
+    json.dump(report, open(f"{OUT}/rejects.json", "w"), ensure_ascii=False, indent=1)
+    for k, v in report.items():
+        print(f"  {k}: " + ", ".join(f"{why} {n}" for why, n in v.items()))
 
 if __name__ == "__main__":
     main()

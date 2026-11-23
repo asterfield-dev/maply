@@ -23,6 +23,12 @@ See [`docs/versioning.md`](docs/versioning.md) for what the numbers mean and
   included, can open the profile.
 - The privacy page names the site by `APP_URL` instead of a fixed
   `maply.ws04.cc`, so moving the domain needs no text change.
+- `harvest.py` counts why a region gave no frame (no frame since 2018, no
+  panorama, none at quality 0.7, too narrow, too soft, and so on), per country
+  of the plan, and prints it with `<out>/rejects.json`. A run that yields
+  nothing in a country now says at which step. `scripts/curation/test_curation.py`
+  checks offline which parts of Ukraine the plan covers and what the counter
+  reports.
 
 ### Added
 
