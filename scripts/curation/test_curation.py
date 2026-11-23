@@ -23,12 +23,14 @@ IN = {
     "Vinnytsia": (49.23, 28.47), "Uzhhorod": (48.62, 22.29), "Chernivtsi": (48.29, 25.94),
     "Ivano-Frankivsk": (48.92, 24.71), "Zhytomyr": (50.25, 28.66), "Rivne": (50.62, 26.25),
     "Cherkasy": (49.44, 32.06),
+    # The city itself is in (owner decision, 2026-11-23), not its region.
+    "Kharkiv": (49.99, 36.23),
 }
 OUT = {
     "Simferopol": (44.95, 34.1), "Sevastopol": (44.6, 33.53), "Donetsk": (48.0, 37.8),
     "Luhansk": (48.57, 39.3), "Mariupol": (47.1, 37.55), "Melitopol": (46.85, 35.37),
-    "Kherson": (46.64, 32.6), "Zaporizhzhia": (47.84, 35.14), "Kharkiv": (49.99, 36.23),
-    "Sumy": (50.9, 34.8),
+    "Kherson": (46.64, 32.6), "Zaporizhzhia": (47.84, 35.14), "Kupiansk": (49.71, 37.62),
+    "Chuhuiv": (49.84, 36.69), "Sumy": (50.9, 34.8),
 }
 
 
