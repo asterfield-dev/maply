@@ -11,6 +11,11 @@ See [`docs/versioning.md`](docs/versioning.md) for what the numbers mean and
 
 ## Unreleased
 
+## v0.1.0-beta.1 - 2026-11-23
+
+For the operator: this release applies migrations 031 and 032. Pull the image
+from `ghcr.io/asterfield-dev/maply`.
+
 ### Changed
 
 - **Images are published as `ghcr.io/asterfield-dev/maply`.** The organization

@@ -3,8 +3,8 @@
 <p align="center"><strong>One place a day. Pin it on the map. The answer comes at 20:00.</strong><br/>A daily geo-guessing game for Telegram groups, built as a Go bot with a Mini App.</p>
 
 <p align="center">
-  <a href="#status"><img src="https://img.shields.io/badge/status-in%20development-245A3C?style=for-the-badge&labelColor=0f172a" alt="status"></a>
-  <a href="docs/architecture.md"><img src="https://img.shields.io/badge/go-1.26-00ADD8?style=for-the-badge&logo=go&logoColor=white&labelColor=0f172a" alt="go version"></a>
+  <a href="#status"><img src="https://img.shields.io/badge/status-beta-245A3C?style=for-the-badge&labelColor=0f172a" alt="status"></a>
+  <a href="docs/architecture.md"><img src="https://img.shields.io/badge/go-1.27-00ADD8?style=for-the-badge&logo=go&logoColor=white&labelColor=0f172a" alt="go version"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache%202.0-334155?style=for-the-badge&labelColor=0f172a" alt="license"></a>
   <a href="https://t.me/maplyin_bot"><img src="https://img.shields.io/badge/telegram-%40maplyin__bot-26A5E4?style=for-the-badge&logo=telegram&logoColor=white&labelColor=0f172a" alt="telegram bot"></a>
   <a href="https://github.com/orgs/asterfield-dev/projects/4"><img src="https://img.shields.io/badge/plan-project%20board-245A3C?style=for-the-badge&logo=github&logoColor=white&labelColor=0f172a" alt="project board"></a>
@@ -47,7 +47,7 @@ maply is deliberately narrow:
 | Channel | Version | Meaning |
 |:--|:--|:--|
 | Stable | — | Nothing stable yet |
-| Alpha | `v0.0.1-alpha.16` | Live as [@maplyin_bot](https://t.me/maplyin_bot) and on [maply.ws04.cc](https://maply.ws04.cc/): the daily round, free play with leaderboards, profiles and sign-in on the site |
+| Beta | `v0.1.0-beta.1` | Play as [@maplyin_bot](https://t.me/maplyin_bot) or on [maply.ws04.cc](https://maply.ws04.cc/): the daily round, free play with leaderboards, profiles and sign-in on the site |
 
 The game is playable end to end: the morning post, the answer and its score,
 the evening result with a map card, the world ranking and a website where
