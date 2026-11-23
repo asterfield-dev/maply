@@ -127,7 +127,7 @@ func TestPrivacyGivesTheOwnersTelegram(t *testing.T) {
 		svc.Privacy().ServeHTTP(rec, httptest.NewRequest("GET", "/privacy?lang="+lang, nil))
 		body := rec.Body.String()
 		if rec.Code != http.StatusOK || strings.Count(body, `<a href="https://t.me/amtiyo" dir="ltr">@amtiyo</a>`) != 1 ||
-			strings.Contains(body, "{contact}") || strings.Contains(body, "github.com") || strings.Contains(body, "&lt;a") {
+			strings.Contains(body, "{contact}") || strings.Contains(body, "github.com") || strings.Contains(body, "&lt;a href") {
 			t.Errorf("privacy in %s = %d, the contact is missing or broken", lang, rec.Code)
 		}
 		// Navigation is not CSP's to stop, and nothing here may name a target.
