@@ -11,6 +11,15 @@ See [`docs/versioning.md`](docs/versioning.md) for what the numbers mean and
 
 ## Unreleased
 
+### Added
+
+- Places of the day can come from Panoramax: `scripts/curation/harvest_px.py`
+  harvests a batch in the same layout as `harvest.py`, and `maply-places`
+  takes a Panoramax picture's direction as its heading and links its page.
+  Mapillary serves no image in Ukraine, so the first Ukrainian places of the
+  day, Kyiv and Kharkiv, come this way. Kharkiv itself is now inside the
+  curation's Ukrainian zone.
+
 ## v0.1.0-beta.1 - 2026-11-23
 
 For the operator: this release applies migrations 031 and 032. Pull the image

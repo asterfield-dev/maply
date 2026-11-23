@@ -69,6 +69,10 @@ type candidate struct {
 	IsPano   bool    `json:"is_pano"`
 	Author   string  `json:"author"`
 	License  string  `json:"license"`
+	// Heading is the direction the frame's centre faces, as the harvest
+	// found it. Mapillary's is asked again (see heading); a Panoramax
+	// batch's comes from the picture's view:azimuth and is used as is.
+	Heading *float64 `json:"heading"`
 }
 
 type reviews struct {
@@ -289,6 +293,8 @@ func (p *preparer) prepare(batchDir, ref string, c candidate, yaw *float64) (*pl
 		if pl.heading, err = p.heading(c, cacheBase+".heading.json"); err != nil {
 			return nil, err
 		}
+	} else {
+		pl.heading = c.Heading
 	}
 	if c.IsPano {
 		if pl.thumbYaw, err = p.thumbYaw(pl.key, cacheBase+".v1.yaw", yaw); err != nil {
@@ -557,8 +563,11 @@ func (pl *place) insert() string {
 		kind = "panorama"
 	}
 	sourceURL := ""
-	if pl.c.Source == "mapillary" {
+	switch pl.c.Source {
+	case "mapillary":
 		sourceURL = "https://www.mapillary.com/app/?pKey=" + pl.c.SourceID
+	case "panoramax":
+		sourceURL = "https://api.panoramax.xyz/#focus=pic&pic=" + pl.c.SourceID
 	}
 	heading := "NULL"
 	if pl.heading != nil {

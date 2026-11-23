@@ -434,7 +434,9 @@ The hood and handlebar at the bottom of a frame are no reason to drop a place. F
 
 Difficulty by weekday: Monday is easy (a recognizable city), Friday is hard (remote areas), weekends are for "Where am I?" and themed rounds.
 
-Russia, Ukraine and Belarus are in the game (decision of 22 October 2026). Excluded: the front line, Crimea and occupied territories, military sites, and frames with recognizable faces. Mapillary blurs faces and plates itself. Whether Panoramax does so has not been checked.
+Russia, Ukraine and Belarus are in the game (decision of 22 October 2026). Excluded: the front line, Crimea and occupied territories, military sites, and frames with recognizable faces. Mapillary blurs faces and plates itself, and so does Panoramax.
+
+Mapillary serves no image for any frame in Ukraine: its tiles list the frames, but the API gives none of them a picture (#45). Ukraine comes from Panoramax through `harvest_px.py`, which writes the same batch layout as `harvest.py`, with the picture's direction as the heading. Its 360° coverage there is thin: in November 2026 a scan of the country found one sequence in Kyiv, one picture in Brovary (at night) and one in Kharkiv. Kharkiv itself is in; the region around it is not.
 
 ### The free pool
 
