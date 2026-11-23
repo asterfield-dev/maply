@@ -38,9 +38,9 @@ func TestRefreshWorld(t *testing.T) {
 		calls int
 		toast string
 	}{
-		{"drawing", schedule.RefreshDrawing, press(tg.Chat{ID: 9, Type: "private"}, 9), 1, "Drawing the map with the new answers, this takes up to a minute."},
+		{"drawing", schedule.RefreshDrawing, press(tg.Chat{ID: 9, Type: "private"}, 9), 1, "Updating the map with the new answers. This takes up to a minute."},
 		{"nothing new", schedule.RefreshSame, press(tg.Chat{ID: 9, Type: "private"}, 9), 1, "No new answers yet."},
-		{"final", schedule.RefreshFinal, press(tg.Chat{ID: 9, Type: "private"}, 9), 1, "World places are final now."},
+		{"final", schedule.RefreshFinal, press(tg.Chat{ID: 9, Type: "private"}, 9), 1, "The world ranking is final now."},
 		{"gone", schedule.RefreshGone, press(tg.Chat{ID: 9, Type: "private"}, 9), 1, ""},
 		{"in a group", schedule.RefreshDrawing, press(tg.Chat{ID: -100, Type: "supergroup"}, 9), 0, ""},
 	} {
