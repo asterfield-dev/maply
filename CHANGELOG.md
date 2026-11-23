@@ -13,12 +13,28 @@ See [`docs/versioning.md`](docs/versioning.md) for what the numbers mean and
 
 ### Changed
 
+- The texts say what they mean. The message field placeholder was "One
+  place a day, one pin"; it now says to press Play or send a location.
+  "Until the truth" is "until the result", the pin toasts and the loading
+  line say what happened instead of joking, and a quiet group is told how
+  to resume without a nap and an emoji. All sixteen languages.
+- Ukrainian calls the map pin "мітка" instead of "шпилька", and the
+  profile's "hide me" note no longer says that nobody, the owner
+  included, can open the profile.
+- The privacy page names the site by `APP_URL` instead of a fixed
+  `maply.ws04.cc`, so moving the domain needs no text change.
 - `harvest.py` counts why a region gave no frame (no frame since 2018, no
   panorama, none at quality 0.7, too narrow, too soft, and so on), per country
   of the plan, and prints it with `<out>/rejects.json`. A run that yields
   nothing in a country now says at which step. `scripts/curation/test_curation.py`
   checks offline which parts of Ukraine the plan covers and what the counter
   reports.
+
+### Added
+
+- The privacy page says what the data is used for, what maply gets from
+  Google and how it is kept and erased, and who runs maply. Google's brand
+  verification asked for it.
 
 ## v0.1.0-beta.1 - 2026-11-23
 

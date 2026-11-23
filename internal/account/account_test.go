@@ -127,12 +127,33 @@ func TestPrivacyGivesTheOwnersTelegram(t *testing.T) {
 		svc.Privacy().ServeHTTP(rec, httptest.NewRequest("GET", "/privacy?lang="+lang, nil))
 		body := rec.Body.String()
 		if rec.Code != http.StatusOK || strings.Count(body, `<a href="https://t.me/amtiyo" dir="ltr">@amtiyo</a>`) != 1 ||
-			strings.Contains(body, "{contact}") || strings.Contains(body, "github.com") || strings.Contains(body, "&lt;a") {
+			strings.Contains(body, "{contact}") || strings.Contains(body, "github.com") || strings.Contains(body, "&lt;a href") {
 			t.Errorf("privacy in %s = %d, the contact is missing or broken", lang, rec.Code)
 		}
 		// Navigation is not CSP's to stop, and nothing here may name a target.
 		if csp := rec.Header().Get("Content-Security-Policy"); strings.Contains(csp, "navigate-to") || strings.Contains(body, "target=") {
 			t.Errorf("privacy in %s: CSP %q or a target on a link", lang, csp)
+		}
+	}
+}
+
+// The page names the site by APP_URL, so a move of the domain needs no text
+// change; without APP_URL it names the host it was asked on.
+func TestPrivacyNamesTheSiteFromAppURL(t *testing.T) {
+	for _, tc := range []struct{ appURL, host, want string }{
+		{"https://maply.example.org/", "other.example", "maply.example.org"},
+		{"", "maply.example.net", "maply.example.net"},
+	} {
+		svc := New(Config{Key: []byte("k1"), AppURL: tc.appURL})
+		for _, lang := range i18n.Codes() {
+			rec := httptest.NewRecorder()
+			req := httptest.NewRequest("GET", "/privacy?lang="+lang, nil)
+			req.Host = tc.host
+			svc.Privacy().ServeHTTP(rec, req)
+			body := rec.Body.String()
+			if !strings.Contains(body, tc.want) || strings.Contains(body, "{site}") || strings.Contains(body, "ws04.cc") {
+				t.Errorf("privacy in %s with APP_URL %q does not name %s", lang, tc.appURL, tc.want)
+			}
 		}
 	}
 }
