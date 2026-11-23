@@ -11,6 +11,12 @@ See [`docs/versioning.md`](docs/versioning.md) for what the numbers mean and
 
 ## Unreleased
 
+## v0.1.0-rc.1 - 2026-11-23
+
+For the operator: no migrations. Pull the image from
+`ghcr.io/asterfield-dev/maply`; the places of the day from Ukraine are already
+in the production database and its image folder.
+
 ### Changed
 
 - The texts say what they mean. The message field placeholder was "One
@@ -29,6 +35,8 @@ See [`docs/versioning.md`](docs/versioning.md) for what the numbers mean and
   nothing in a country now says at which step. `scripts/curation/test_curation.py`
   checks offline which parts of Ukraine the plan covers and what the counter
   reports.
+- Dependencies: chromedp 0.24.0, pgx 5.13.0, golang.org/x/image 0.48.0 and
+  golang.org/x/text 0.44.0.
 
 ### Added
 
