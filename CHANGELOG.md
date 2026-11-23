@@ -11,6 +11,11 @@ See [`docs/versioning.md`](docs/versioning.md) for what the numbers mean and
 
 ## Unreleased
 
+## v0.1.0-rc.2 - 2026-11-23
+
+For the operator: no migrations. After the deploy, set the home page of the
+Google sign-in branding to `https://<site>/about`.
+
 ### Added
 
 - `/about` says what maply is, how to play in Telegram and on the site, what
