@@ -137,6 +137,27 @@ func TestPrivacyGivesTheOwnersTelegram(t *testing.T) {
 	}
 }
 
+// The page names the site by APP_URL, so a move of the domain needs no text
+// change; without APP_URL it names the host it was asked on.
+func TestPrivacyNamesTheSiteFromAppURL(t *testing.T) {
+	for _, tc := range []struct{ appURL, host, want string }{
+		{"https://maply.example.org/", "other.example", "maply.example.org"},
+		{"", "maply.example.net", "maply.example.net"},
+	} {
+		svc := New(Config{Key: []byte("k1"), AppURL: tc.appURL})
+		for _, lang := range i18n.Codes() {
+			rec := httptest.NewRecorder()
+			req := httptest.NewRequest("GET", "/privacy?lang="+lang, nil)
+			req.Host = tc.host
+			svc.Privacy().ServeHTTP(rec, req)
+			body := rec.Body.String()
+			if !strings.Contains(body, tc.want) || strings.Contains(body, "{site}") || strings.Contains(body, "ws04.cc") {
+				t.Errorf("privacy in %s with APP_URL %q does not name %s", lang, tc.appURL, tc.want)
+			}
+		}
+	}
+}
+
 // The page covers what other players see of free play and the public link,
 // in the words the app's own switches and tables use.
 func TestPrivacyNamesTheAppsOwnWords(t *testing.T) {

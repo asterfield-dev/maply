@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"html/template"
 	"net/http"
+	"net/url"
 	"strings"
 
 	"github.com/asterfield-dev/maply/internal/i18n"
@@ -72,6 +73,16 @@ type privacyLang struct {
 	Current    bool
 }
 
+// siteHost is the site's address as the privacy page names it: the host of
+// APP_URL, else the host the page was asked on. The domain may move, so no
+// text carries it.
+func (s *Service) siteHost(r *http.Request) string {
+	if u, err := url.Parse(s.cfg.AppURL); err == nil && u.Host != "" {
+		return u.Host
+	}
+	return r.Host
+}
+
 // Privacy serves /privacy in ?lang=, else the browser's first language maply
 // speaks, else English.
 func (s *Service) Privacy() http.Handler {
@@ -86,7 +97,7 @@ func (s *Service) Privacy() http.Handler {
 		}
 		data := map[string]any{
 			"Lang": lang, "Dir": "ltr",
-			"Title": i18n.T(lang, "acct.privacy.title"), "Intro": i18n.T(lang, "acct.privacy.intro"),
+			"Title": i18n.T(lang, "acct.privacy.title"), "Intro": i18n.T(lang, "acct.privacy.intro", "site", s.siteHost(r)),
 			"Back": i18n.T(lang, "acct.privacy.back"), "Languages": i18n.T(lang, "acct.privacy.languages"),
 			"Sections": []privacySection{
 				{i18n.T(lang, "acct.privacy.keep_h"), items("acct.privacy.keep")},
