@@ -11,6 +11,24 @@ See [`docs/versioning.md`](docs/versioning.md) for what the numbers mean and
 
 ## Unreleased
 
+## v0.1.0 - 2026-11-25
+
+The first stable maply: v0.1.0-rc.2, which ran on the production bot since
+23 November, plus the fix below. The fix itself went out without a
+pre-release, because Play in the DM did not open the game for anyone after the
+public launch.
+
+For the operator: no migrations, no new settings.
+
+### Fixed
+
+- Play under the DM's input field opened a screen that said "Open maply in
+  Telegram" instead of the day. Telegram opens a reply keyboard's Mini App
+  without initData, so the app could not tell who plays. Play is now a text
+  button: it sends the menu, whose own Play opens the day. A keyboard sent
+  before this version still has the old button; the Mini App opened from it
+  reopens itself through `t.me/<bot>/play`, which Telegram signs.
+
 ## v0.1.0-rc.2 - 2026-11-23
 
 For the operator: no migrations. After the deploy, set the home page of the

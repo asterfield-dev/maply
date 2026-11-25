@@ -953,7 +953,15 @@ Desk.change(() => {
 });
 
 /* ---------- Start ---------- */
-// Opened inside Telegram without initData (a plain link in the in-app browser) there is nothing to play as.
+// Opened inside Telegram without initData (a plain link in the in-app browser, or the reply keyboard's old web_app
+// Play, which Telegram opens unsigned and which stays under the input field until the bot sends a new keyboard) there
+// is nothing to play as. The same app opened by its direct link is signed, so the app reopens itself that way. The
+// site's day names the bot without asking who plays.
+async function reopenSigned() {
+  if (!tgAt("6.1")) return;
+  const d = await reply(await get("/api/site/today", {})).catch(() => null);
+  if (d && d.bot) tg.openTelegramLink("https://t.me/" + encodeURIComponent(d.bot) + "/play");
+}
 async function boot() {
   // Who is signed in on the site decides which API plays.
   if (typeof accountBoot === "function") await accountBoot();
@@ -966,7 +974,7 @@ async function boot() {
     loadTexts(LANG0).catch(() => {}),
   ]);
   setCall(T("where"), T("drop_pin"));
-  if (!today) { stopLoading(T("open_in_telegram")); return; }
+  if (!today) { stopLoading(T("open_in_telegram")); reopenSigned(); return; }
   if (today instanceof Error) { failLoading(errorText(today), boot); return; }
   TODAY = today;
   if (TODAY.now) SKEW = Date.parse(TODAY.now) - Date.now();

@@ -73,9 +73,15 @@ func TestStartSendsTheKeyboardInDMsOnly(t *testing.T) {
 	if len(rows) != 2 || len(rows[0]) != 1 || len(rows[1]) != 2 {
 		t.Fatalf("rows = %+v", rows)
 	}
+	// Play is a text button: Telegram opens a reply keyboard's Mini App
+	// without initData. Pressed, it sends the panel, whose Play is signed.
 	play := rows[0][0]
-	if play.Text != "Играть" || play.WebApp != "https://maply.example/today" || play.Style != tg.StylePrimary {
+	if play.Text != "Играть" || play.WebApp != "" || play.Style != tg.StylePrimary {
 		t.Fatalf("play = %+v", play)
+	}
+	b.handle(ctx, command(private(member), member, "Играть"))
+	if len(client.sends) != 2 {
+		t.Fatalf("sends = %d after Play, want the panel", len(client.sends))
 	}
 	if rows[1][0].Text != "Итог дня" || rows[1][1].Text != "Меню" || rows[1][0].WebApp != "" || rows[1][1].WebApp != "" {
 		t.Fatalf("second row = %+v", rows[1])
@@ -86,7 +92,7 @@ func TestStartSendsTheKeyboardInDMsOnly(t *testing.T) {
 	b.handle(ctx, command(group, admin, "/start"))
 	b.handle(ctx, command(group, member, "Меню"))
 	b.handle(ctx, command(group, member, "Итог дня"))
-	if len(client.keyboards) != 1 || len(client.sends) != 2 {
+	if len(client.keyboards) != 1 || len(client.sends) != 3 {
 		t.Fatalf("a group got keyboards %d, sends %d", len(client.keyboards), len(client.sends))
 	}
 	if err := b.sendKeyboard(ctx, group, "ru"); err != nil || len(client.keyboards) != 1 {

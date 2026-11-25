@@ -50,13 +50,12 @@ func keyOf(m *tg.Message) string {
 	return keyTexts[strings.TrimSpace(m.Text)]
 }
 
-// keyboard is Play over Today's result and Menu. Play opens the day in the
-// Mini App; without one it is a text button that sends the menu.
+// keyboard is Play over Today's result and Menu. Play is a text button that
+// sends the menu, whose own Play opens the day. It is never a web_app button:
+// Telegram opens a reply keyboard's Mini App without initData, and the app
+// cannot tell who plays.
 func (b *Bot) keyboard(lang string) telegram.Keyboard {
 	play := telegram.KeyButton{Text: i18n.T(lang, "btn.play"), Style: tg.StylePrimary}
-	if b.opts.AppURL != "" {
-		play.WebApp = appPage(b.opts.AppURL, "/today")
-	}
 	return telegram.Keyboard{
 		Rows: [][]telegram.KeyButton{
 			{play},
