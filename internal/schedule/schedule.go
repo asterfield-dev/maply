@@ -22,16 +22,16 @@ import (
 	"sync"
 	"time"
 
-	"github.com/FreshLabDev/tg"
+	"github.com/asterfield-dev/tg"
 
-	"github.com/FreshLabDev/maply/internal/anim"
-	"github.com/FreshLabDev/maply/internal/auth"
-	"github.com/FreshLabDev/maply/internal/db"
-	"github.com/FreshLabDev/maply/internal/geo"
-	"github.com/FreshLabDev/maply/internal/i18n"
-	"github.com/FreshLabDev/maply/internal/round"
-	"github.com/FreshLabDev/maply/internal/scoring"
-	"github.com/FreshLabDev/maply/internal/telegram"
+	"github.com/asterfield-dev/maply/internal/anim"
+	"github.com/asterfield-dev/maply/internal/auth"
+	"github.com/asterfield-dev/maply/internal/db"
+	"github.com/asterfield-dev/maply/internal/geo"
+	"github.com/asterfield-dev/maply/internal/i18n"
+	"github.com/asterfield-dev/maply/internal/round"
+	"github.com/asterfield-dev/maply/internal/scoring"
+	"github.com/asterfield-dev/maply/internal/telegram"
 )
 
 type Store interface {
@@ -87,6 +87,13 @@ type Store interface {
 	LeaveChat(ctx context.Context, chatID int64) error
 	MigrateChat(ctx context.Context, from, to int64) error
 	FixZone(ctx context.Context, chatID int64, zone string) error
+	WarmupOf(ctx context.Context, chatID int64) (db.Warmup, bool, error)
+	WarmupGuesses(ctx context.Context, chatID int64) ([]db.Guess, error)
+	SetWarmupResult(ctx context.Context, chatID, msgID int64) error
+	QuietOf(ctx context.Context, chatID int64, d round.Date) (db.Quiet, error)
+	AskQuiet(ctx context.Context, chatID int64, d round.Date, msgID int64) error
+	ClearQuiet(ctx context.Context, chatID int64) error
+	PauseGroup(ctx context.Context, chatID int64, by string) (int64, bool, error)
 }
 
 type Telegram interface {
@@ -281,6 +288,26 @@ func intrigueAt(chatID int64, d round.Date, loc *time.Location) time.Time {
 	return d.At(16, 0, loc).Add(time.Duration(h.Sum32()%120) * time.Minute)
 }
 
+// intrigueSlot is when the chat's intrigue comes: a moment of 16:00–18:00
+// at least an hour after the post. ok is false when the post comes too
+// late for one; a group then still has a slot half an hour after the post,
+// used only by the quiet group's question.
+func intrigueSlot(c db.Chat, d round.Date, loc *time.Location) (at time.Time, ok bool) {
+	post := d.At(c.PostHour, c.PostMin, loc)
+	if at := intrigueAt(c.ID, d, loc); at.After(post.Add(time.Hour)) {
+		return at, true
+	}
+	if c.Kind == "group" {
+		return post.Add(30 * time.Minute), true
+	}
+	return time.Time{}, false
+}
+
+// intrigueFits is whether the chat's day has room for an intrigue proper.
+func intrigueFits(c db.Chat, d round.Date, loc *time.Location) bool {
+	return intrigueAt(c.ID, d, loc).After(d.At(c.PostHour, c.PostMin, loc).Add(time.Hour))
+}
+
 // plan queues the current date's three jobs for every chat. The queue's keys
 // make this idempotent; the map only spares the database a repeat.
 func (s *Scheduler) plan(ctx context.Context) error {
@@ -323,8 +350,13 @@ func (s *Scheduler) plan(ctx context.Context) error {
 		d := round.DateIn(now, loc)
 		// The zone is in the mark: a chat that moves to another zone gets its
 		// jobs moved the same minute, not after a restart.
-		mark := fmt.Sprintf("%s %s %02d:%02d %t", d, loc, c.PostHour, c.PostMin, c.Intrigue)
+		mark := fmt.Sprintf("%s %s %02d:%02d %t %d", d, loc, c.PostHour, c.PostMin, c.Intrigue, c.ResumedAt.Unix())
 		if s.planned[c.ID] == mark {
+			continue
+		}
+		// A group resumed after today's post time starts tomorrow morning.
+		if resting(c, d, loc) {
+			s.planned[c.ID] = mark
 			continue
 		}
 		reveal := d.Reveal(loc)
@@ -333,7 +365,9 @@ func (s *Scheduler) plan(ctx context.Context) error {
 			if err := s.Store.PlanJob(ctx, jobPost, c.ID, d, post); err != nil {
 				return err
 			}
-			if at := intrigueAt(c.ID, d, loc); c.Intrigue && at.After(post.Add(time.Hour)) {
+			// A group's slot is planned with the intrigue off as well: a
+			// quiet group's question takes it (see askQuiet).
+			if at, ok := intrigueSlot(c, d, loc); ok && (c.Intrigue || c.Kind == "group") {
 				if err := s.Store.PlanJob(ctx, jobIntrigue, c.ID, d, at); err != nil {
 					return err
 				}
@@ -422,6 +456,8 @@ func (s *Scheduler) do(ctx context.Context, j db.Job) (err error) {
 		return s.result(ctx, j)
 	case jobWorld:
 		return s.worldFinal(ctx, j)
+	case JobWarmup:
+		return s.warmup(ctx, j.ChatID)
 	}
 	return errSkip
 }
@@ -500,12 +536,23 @@ func (s *Scheduler) post(ctx context.Context, j db.Job) error {
 	if err != nil {
 		return err
 	}
+	if resting(c, j.Date, loc) {
+		return errSkip
+	}
 	cr, err := s.Store.ChatRound(ctx, c.ID, j.Date)
 	if err != nil {
 		return err
 	}
 	if cr.PostMsgID != 0 {
 		return nil
+	}
+	if c.Kind == "group" {
+		// A failed check costs the pause a day, not the group its post.
+		if paused, err := s.pauseIfIgnored(ctx, c, j.Date); err != nil {
+			s.Log.Error("quiet check failed", "chat", c.ID, "error", err)
+		} else if paused {
+			return errSkip
+		}
 	}
 	lang := i18n.Resolve(c.Lang)
 	line := ""

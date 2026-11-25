@@ -12,12 +12,12 @@ import (
 	"golang.org/x/text/language"
 	"golang.org/x/text/message"
 
-	"github.com/FreshLabDev/tg"
+	"github.com/asterfield-dev/tg"
 
-	"github.com/FreshLabDev/maply/internal/db"
-	"github.com/FreshLabDev/maply/internal/i18n"
-	"github.com/FreshLabDev/maply/internal/round"
-	"github.com/FreshLabDev/maply/internal/telegram"
+	"github.com/asterfield-dev/maply/internal/db"
+	"github.com/asterfield-dev/maply/internal/i18n"
+	"github.com/asterfield-dev/maply/internal/round"
+	"github.com/asterfield-dev/maply/internal/telegram"
 )
 
 // The menu repeats voicy's and quoto's: callbacks "m:<owner>:<action>", the
@@ -31,8 +31,8 @@ const (
 
 const (
 	productName = "maply"
-	repoURL     = "https://github.com/FreshLabDev/maply"
-	repoName    = "FreshLabDev/maply"
+	repoURL     = "https://github.com/asterfield-dev/maply"
+	repoName    = "asterfield-dev/maply"
 	licenseName = "Apache-2.0"
 	adminURL    = "https://t.me/amtiyo"
 	adminName   = "@amtiyo"
@@ -53,6 +53,7 @@ const (
 	actGroupAuto = "glangauto"
 	actPost      = "post"
 	actSwitch    = "sw"
+	actResume    = "resume"
 	actClose     = "close"
 )
 
@@ -62,7 +63,7 @@ var postSteps = map[int]bool{-60: true, -15: true, 15: true, 60: true}
 func adminOnly(action string) bool {
 	head, _, _ := strings.Cut(action, ":")
 	switch head {
-	case actSettings, actZone, actGroupLang, actGroupAuto, actPost, actSwitch:
+	case actSettings, actZone, actGroupLang, actGroupAuto, actPost, actSwitch, actResume:
 		return true
 	}
 	return false
@@ -189,11 +190,16 @@ func (v view) closeButton() telegram.Button {
 // home is two screens, with the reveal in the chat's zone (one of
 // round.ZoneChoices). The direct chat gets every tab: there the panel is the
 // whole bot. A group gets what a group acts on, and Settings only for an
-// admin, who is the only one who can change them.
-func (v view) home(appURL string, admin bool, zone string) (string, telegram.Markup) {
+// admin, who is the only one who can change them. A group's warm-up, while
+// it takes answers, is the first button there: warm is its link.
+func (v view) home(appURL string, admin bool, zone, warm string) (string, telegram.Markup) {
 	if v.sc == scopeGroup {
 		text := panel(productName, "", v.t("home.hint"), quote(v.t("home.group", "time", i18n.At(v.lang, revealTime(), zone))))
 		var rows telegram.Markup
+		// A warm-up that still takes answers is the one thing to play here.
+		if warm != "" {
+			rows = append(rows, []telegram.Button{{Text: v.t("btn.warmup"), URL: warm, Style: tg.StylePrimary}})
+		}
 		if admin {
 			rows = append(rows, []telegram.Button{v.button("btn.settings", actSettings)})
 		}
@@ -222,12 +228,15 @@ func (v view) home(appURL string, admin bool, zone string) (string, telegram.Mar
 }
 
 // freeURL opens the Mini App on the free game: its page /play.
-func freeURL(appURL string) string {
+func freeURL(appURL string) string { return appPage(appURL, "/play") }
+
+// appPage is the Mini App's address of one of its pages.
+func appPage(appURL, page string) string {
 	u, err := url.Parse(appURL)
 	if err != nil {
 		return appURL
 	}
-	u.Path = strings.TrimSuffix(u.Path, "/") + "/play"
+	u.Path = strings.TrimSuffix(u.Path, "/") + page
 	return u.String()
 }
 

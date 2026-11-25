@@ -1,13 +1,13 @@
 <h1 align="center">maply</h1>
 
-<p align="center"><strong>One place a day. Pin it on the map. The answer comes at 20:00.</strong><br/>A daily geo-guessing game for Telegram groups, built as a Go bot with a Mini App.</p>
+<p align="center"><strong>A daily geo-guessing game for Telegram.</strong><br/>Every morning one street panorama, the same for every chat. Everyone drops a pin in the Mini App; the place, the scores and the chat's table come at 20:00.</p>
 
 <p align="center">
-  <a href="#status"><img src="https://img.shields.io/badge/status-in%20development-245A3C?style=for-the-badge&labelColor=0f172a" alt="status"></a>
-  <a href="docs/architecture.md"><img src="https://img.shields.io/badge/go-1.26-00ADD8?style=for-the-badge&logo=go&logoColor=white&labelColor=0f172a" alt="go version"></a>
+  <a href="#status"><img src="https://img.shields.io/badge/status-beta-245A3C?style=for-the-badge&labelColor=0f172a" alt="status"></a>
+  <a href="docs/architecture.md"><img src="https://img.shields.io/badge/go-1.27-00ADD8?style=for-the-badge&logo=go&logoColor=white&labelColor=0f172a" alt="go version"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache%202.0-334155?style=for-the-badge&labelColor=0f172a" alt="license"></a>
   <a href="https://t.me/maplyin_bot"><img src="https://img.shields.io/badge/telegram-%40maplyin__bot-26A5E4?style=for-the-badge&logo=telegram&logoColor=white&labelColor=0f172a" alt="telegram bot"></a>
-  <a href="https://github.com/orgs/FreshLabDev/projects/4"><img src="https://img.shields.io/badge/plan-project%20board-245A3C?style=for-the-badge&logo=github&logoColor=white&labelColor=0f172a" alt="project board"></a>
+  <a href="https://github.com/orgs/asterfield-dev/projects/4"><img src="https://img.shields.io/badge/plan-project%20board-245A3C?style=for-the-badge&logo=github&logoColor=white&labelColor=0f172a" alt="project board"></a>
 </p>
 
 <p align="center">
@@ -35,10 +35,9 @@ maply is deliberately narrow:
 | Not another chatterbot | At most three group messages a day: post, intrigue, result |
 | Something to talk about | One honest hint between 16:00 and 18:00, then the reveal |
 | A reason to come back | Streaks, a chat leaderboard, free play between days, a share line without spoilers |
-| Familiar stack | Go, the family's `tg` client, shared Asterfield `core` |
 
-> **Result:** a five-minute ritual that the whole chat plays at its own pace and
-> argues about in the evening.
+> **Result:** one short game a day inside the chat, with the place, the scores
+> and the chat's table at 20:00.
 
 ---
 
@@ -47,15 +46,15 @@ maply is deliberately narrow:
 | Channel | Version | Meaning |
 |:--|:--|:--|
 | Stable | — | Nothing stable yet |
-| Alpha | `v0.0.1-alpha.16` | Live as [@maplyin_bot](https://t.me/maplyin_bot) and on [maply.ws04.cc](https://maply.ws04.cc/): the daily round, free play with leaderboards, profiles and sign-in on the site |
+| Beta | `v0.1.0-beta.1` | Play as [@maplyin_bot](https://t.me/maplyin_bot) or on [maply.ws04.cc](https://maply.ws04.cc/): the daily round, free play with leaderboards, profiles and sign-in on the site |
 
-The game is playable end to end: the morning post, the answer and its score,
+Each day brings the morning post, the answer and its score,
 the evening result with a map card, the world ranking and a website where
 anyone can play without Telegram. Between days there is free play: alone,
 against the clock, from the archive of past days, as a challenge or with
 friends, with leaderboards for the timed modes. The site signs in with
 Telegram or Google and keeps a profile. Work is tracked on the
-[project board](https://github.com/orgs/FreshLabDev/projects/4); what the MVP
+[project board](https://github.com/orgs/asterfield-dev/projects/4); what the MVP
 includes and where it departs from the design is in
 [`docs/mvp-plan.md`](docs/mvp-plan.md).
 
@@ -86,7 +85,7 @@ for the world map, plus +300 for the right continent, +500 for the country and
 maply is one Go service with PostgreSQL as its only durable store. Domain
 tables live in a `maply` schema in the shared `core-postgres`; identity,
 presence and language come from `core`. Telegram goes through
-[`FreshLabDev/tg`](https://github.com/FreshLabDev/tg) with long polling.
+[`asterfield-dev/tg`](https://github.com/asterfield-dev/tg) with long polling.
 
 ```text
 telegram poller -> bot: /start, settings, operator chat
@@ -156,12 +155,12 @@ The curation scripts need a Mapillary client token in `.env`; see
 | [Versioning](docs/versioning.md) | Pre-release and stable version line |
 | [Release process](docs/releases.md) | Changelog, GitHub Release, deploying |
 | [Sign-in](docs/sign-in.md) | Telegram and Google keys for the site |
-| [Project board](https://github.com/orgs/FreshLabDev/projects/4) | Every task and its status |
+| [Project board](https://github.com/orgs/asterfield-dev/projects/4) | Every task and its status |
 
 ---
 
 <p align="center">
-  <a href="https://github.com/orgs/FreshLabDev/projects/4">Project board</a> ·
+  <a href="https://github.com/orgs/asterfield-dev/projects/4">Project board</a> ·
   <a href="CHANGELOG.md">Changelog</a> ·
   <a href="LICENSE">Apache-2.0</a> ·
   <a href="NOTICE">NOTICE</a>

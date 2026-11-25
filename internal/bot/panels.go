@@ -8,13 +8,13 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/FreshLabDev/tg"
+	"github.com/asterfield-dev/tg"
 
-	"github.com/FreshLabDev/maply/internal/db"
-	"github.com/FreshLabDev/maply/internal/i18n"
-	"github.com/FreshLabDev/maply/internal/round"
-	"github.com/FreshLabDev/maply/internal/schedule"
-	"github.com/FreshLabDev/maply/internal/telegram"
+	"github.com/asterfield-dev/maply/internal/db"
+	"github.com/asterfield-dev/maply/internal/i18n"
+	"github.com/asterfield-dev/maply/internal/round"
+	"github.com/asterfield-dev/maply/internal/schedule"
+	"github.com/asterfield-dev/maply/internal/telegram"
 )
 
 // isStart reports whether a message is /start for maply. In a group a bare
@@ -172,7 +172,14 @@ func (b *Bot) sendHome(ctx context.Context, m *tg.Message) error {
 			b.log.Warn("admin check failed", "chat", m.Chat.ID, "error", err)
 		}
 	}
-	text, markup := v.home(b.opts.AppURL, admin, round.Name(zone, zoneLang))
+	warm := ""
+	if v.sc == scopeGroup {
+		warm = b.openWarmup(ctx, m.Chat.ID)
+	}
+	text, markup := v.home(b.opts.AppURL, admin, round.Name(zone, zoneLang), warm)
+	if v.sc == scopeGroup && b.groupPaused(ctx, m.Chat.ID) {
+		text, markup = v.paused(admin)
+	}
 	if _, err := b.tg.SendTextIn(ctx, m.Chat.ID, threadOf(*m), text, markup); err != nil {
 		return fmt.Errorf("send home to %d: %w", m.Chat.ID, err)
 	}
@@ -214,8 +221,16 @@ func pressedHere(m tg.Message, data string) bool {
 }
 
 func (b *Bot) onCallback(ctx context.Context, cq *tg.CallbackQuery) error {
+	// A press under an inline message has no message. maply sends none, so
+	// such a press is not one of its panels or cards.
+	if cq.Message == nil {
+		return b.tg.AnswerCallbackQuery(ctx, cq.ID, "")
+	}
 	if d, ok := schedule.WorldCallback(cq.Data); ok {
 		return b.onRefreshWorld(ctx, cq, d)
+	}
+	if isQuietCB(cq.Data) {
+		return b.onQuiet(ctx, cq)
 	}
 	owner, action, ok := parseMenuCB(cq.Data)
 	if !ok {
@@ -239,7 +254,7 @@ func (b *Bot) onCallback(ctx context.Context, cq *tg.CallbackQuery) error {
 			return b.tg.AnswerCallbackQueryAlert(ctx, cq.ID, i18n.T(reader, "msg.not_yours"))
 		}
 	}
-	if (!isPanel(cq.Message) && !b.isCard(cq.Message)) || !pressedHere(cq.Message, cq.Data) {
+	if (!isPanel(*cq.Message) && !b.isCard(*cq.Message)) || !pressedHere(*cq.Message, cq.Data) {
 		return b.tg.AnswerCallbackQuery(ctx, cq.ID, "")
 	}
 	alert, err := b.runAction(ctx, cq, owner, action, raw)
@@ -292,7 +307,7 @@ func (b *Bot) runAction(ctx context.Context, cq *tg.CallbackQuery, owner int64, 
 
 	msgID := cq.Message.MessageID
 	show := func(text string, markup telegram.Markup) (int64, error) {
-		if !b.isCard(cq.Message) {
+		if !b.isCard(*cq.Message) {
 			// Pressing what the panel already shows (the current language,
 			// −1:00 at 05:00) changes nothing, and that is no error.
 			if err := b.tg.EditText(ctx, chat.ID, msgID, text, markup); err != nil && !tg.IsMessageNotModified(err) {
@@ -303,7 +318,7 @@ func (b *Bot) runAction(ctx context.Context, cq *tg.CallbackQuery, owner int64, 
 		}
 		// A picture cannot turn back into text: the panel comes again in a
 		// new message, and the picture goes.
-		msg, err := b.tg.SendTextIn(ctx, chat.ID, threadOf(cq.Message), text, markup)
+		msg, err := b.tg.SendTextIn(ctx, chat.ID, threadOf(*cq.Message), text, markup)
 		if err != nil {
 			return 0, err
 		}
@@ -346,7 +361,39 @@ func (b *Bot) runAction(ctx context.Context, cq *tg.CallbackQuery, owner int64, 
 		if err != nil {
 			return "", err
 		}
-		return edit(v.home(b.opts.AppURL, admin, round.Name(zone, zoneLang)))
+		warm := ""
+		if v.sc == scopeGroup {
+			warm = b.openWarmup(ctx, chat.ID)
+			if b.groupPaused(ctx, chat.ID) {
+				return edit(v.paused(admin))
+			}
+		}
+		return edit(v.home(b.opts.AppURL, admin, round.Name(zone, zoneLang), warm))
+	case actResume:
+		if v.sc != scopeGroup {
+			return "", nil
+		}
+		ok, err := b.store.ResumeGroup(ctx, chat.ID, b.opts.Now())
+		if err != nil {
+			return "", err
+		}
+		if ok {
+			b.log.Info("group resumed", "chat", chat.ID)
+		}
+		zone, err := b.store.ChatZone(ctx, chat.ID)
+		if err != nil {
+			return "", err
+		}
+		st, err := b.store.ChatSettings(ctx, chat.ID)
+		if err != nil {
+			return "", err
+		}
+		// The home, saying when the next place comes: the first morning
+		// post after now (schedule's resting), which is today's only
+		// before its time.
+		_, markup := v.home(b.opts.AppURL, true, round.Name(zone, zoneLang), "")
+		text := panel(productName, "", v.t("home.hint"), quote(v.t("home.resumed", "post", fmt.Sprintf("%02d:%02d", st.PostHour, st.PostMin))))
+		return edit(text, markup)
 	case actHelp:
 		return edit(v.help())
 	case actAbout:
@@ -373,8 +420,9 @@ func (b *Bot) runAction(ctx context.Context, cq *tg.CallbackQuery, owner int64, 
 		if err != nil {
 			return "", err
 		}
+		was := v.lang
 		v.lang = i18n.Resolve(raw)
-		return edit(v.language())
+		return b.relabel(ctx, chat, was, v.lang, func() (string, error) { return edit(v.language()) })
 	case actSettings:
 		return settings()
 	case actZone:
@@ -402,8 +450,9 @@ func (b *Bot) runAction(ctx context.Context, cq *tg.CallbackQuery, owner int64, 
 		if err := b.store.SetUserLang(ctx, cq.From.ID, code); err != nil {
 			return "", err
 		}
+		was := v.lang
 		v.lang = code
-		return edit(v.language())
+		return b.relabel(ctx, chat, was, code, func() (string, error) { return edit(v.language()) })
 	}
 	if code, ok := strings.CutPrefix(action, actGroupLang+":"); ok {
 		if !i18n.IsSupported(code) || v.sc != scopeGroup {
@@ -469,6 +518,19 @@ func (b *Bot) runAction(ctx context.Context, cq *tg.CallbackQuery, owner int64, 
 	return "", nil
 }
 
+// relabel redraws the language panel and, when the language changed, sends
+// the DM's keyboard again in the new one: a reply keyboard cannot be edited.
+func (b *Bot) relabel(ctx context.Context, chat tg.Chat, was, now string, redraw func() (string, error)) (string, error) {
+	alert, err := redraw()
+	if err != nil || was == now {
+		return alert, err
+	}
+	if err := b.sendKeyboard(ctx, chat, now); err != nil {
+		b.log.Warn("keyboard not sent", "error", err)
+	}
+	return alert, nil
+}
+
 // onMembership sets a group up when maply is added and marks it when maply
 // is removed. In a DM the same update says the person blocked or unblocked
 // maply. A restricted maply is still in the group: an admin who turned off
@@ -497,7 +559,10 @@ func (b *Bot) onMembership(ctx context.Context, upd *tg.ChatMemberUpdated) error
 		if err != nil {
 			return err
 		}
-		return b.adopt(ctx, upd.Chat.ID, chatLang, raw)
+		if err := b.adopt(ctx, upd.Chat.ID, chatLang, raw); err != nil {
+			return err
+		}
+		return b.welcome(ctx, upd, chatLang, raw)
 	case !in(upd.NewChatMember.Status) && in(upd.OldChatMember.Status):
 		return b.store.LeaveChat(ctx, upd.Chat.ID)
 	}

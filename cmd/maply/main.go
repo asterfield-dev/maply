@@ -12,27 +12,27 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/FreshLabDev/tg"
+	"github.com/asterfield-dev/tg"
 
-	"github.com/FreshLabDev/maply/internal/account"
-	"github.com/FreshLabDev/maply/internal/api"
-	"github.com/FreshLabDev/maply/internal/auth"
-	"github.com/FreshLabDev/maply/internal/avatar"
-	"github.com/FreshLabDev/maply/internal/bot"
-	"github.com/FreshLabDev/maply/internal/card"
-	"github.com/FreshLabDev/maply/internal/config"
-	"github.com/FreshLabDev/maply/internal/db"
-	"github.com/FreshLabDev/maply/internal/free"
-	"github.com/FreshLabDev/maply/internal/geo"
-	"github.com/FreshLabDev/maply/internal/health"
-	"github.com/FreshLabDev/maply/internal/profile"
-	"github.com/FreshLabDev/maply/internal/round"
-	"github.com/FreshLabDev/maply/internal/schedule"
-	"github.com/FreshLabDev/maply/internal/telegram"
-	"github.com/FreshLabDev/maply/internal/thumb"
-	"github.com/FreshLabDev/maply/internal/world"
-	"github.com/FreshLabDev/maply/migrations"
-	"github.com/FreshLabDev/maply/web"
+	"github.com/asterfield-dev/maply/internal/account"
+	"github.com/asterfield-dev/maply/internal/api"
+	"github.com/asterfield-dev/maply/internal/auth"
+	"github.com/asterfield-dev/maply/internal/avatar"
+	"github.com/asterfield-dev/maply/internal/bot"
+	"github.com/asterfield-dev/maply/internal/card"
+	"github.com/asterfield-dev/maply/internal/config"
+	"github.com/asterfield-dev/maply/internal/db"
+	"github.com/asterfield-dev/maply/internal/free"
+	"github.com/asterfield-dev/maply/internal/geo"
+	"github.com/asterfield-dev/maply/internal/health"
+	"github.com/asterfield-dev/maply/internal/profile"
+	"github.com/asterfield-dev/maply/internal/round"
+	"github.com/asterfield-dev/maply/internal/schedule"
+	"github.com/asterfield-dev/maply/internal/telegram"
+	"github.com/asterfield-dev/maply/internal/thumb"
+	"github.com/asterfield-dev/maply/internal/world"
+	"github.com/asterfield-dev/maply/migrations"
+	"github.com/asterfield-dev/maply/web"
 )
 
 var (
@@ -110,7 +110,9 @@ func run(log *slog.Logger) error {
 			log.Info("animated posts on", "ffmpeg", path)
 		}
 	}
+	signer := auth.NewSigner(cfg.TelegramBotToken)
 	opts := bot.Options{
+		Payloads: signer,
 		Username: me.Username,
 		Version:  version,
 		AppURL:   cfg.AppURL,
@@ -130,7 +132,6 @@ func run(log *slog.Logger) error {
 	// The players' photos for the pins and tables of the results.
 	avatars := &avatar.Service{Store: store, TG: tgc, Log: log}
 
-	signer := auth.NewSigner(cfg.TelegramBotToken)
 	// Without a renderer the result goes out with the place's photo and the
 	// Mini App shares through t.me/share, as before the card existed.
 	var cards *card.Service
@@ -228,6 +229,7 @@ func run(log *slog.Logger) error {
 	mux.Handle("/face/", game)
 	mux.Handle("/auth/", accounts.Middleware(accounts.Handler()))
 	mux.Handle("GET /privacy", accounts.Privacy())
+	mux.Handle("GET /about", accounts.About())
 	mux.Handle("/thumb/", game)
 	mux.Handle("/og/", game)
 	if cards != nil {

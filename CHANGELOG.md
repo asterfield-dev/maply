@@ -11,6 +11,126 @@ See [`docs/versioning.md`](docs/versioning.md) for what the numbers mean and
 
 ## Unreleased
 
+## v0.1.0 - 2026-11-25
+
+The first stable maply: v0.1.0-rc.2, which ran on the production bot since
+23 November, plus the fix below. The fix itself went out without a
+pre-release, because Play in the DM did not open the game for anyone after the
+public launch.
+
+For the operator: no migrations, no new settings.
+
+### Fixed
+
+- Play under the DM's input field opened a screen that said "Open maply in
+  Telegram" instead of the day. Telegram opens a reply keyboard's Mini App
+  without initData, so the app could not tell who plays. Play is now a text
+  button: it sends the menu, whose own Play opens the day. A keyboard sent
+  before this version still has the old button; the Mini App opened from it
+  reopens itself through `t.me/<bot>/play`, which Telegram signs.
+
+## v0.1.0-rc.2 - 2026-11-23
+
+For the operator: no migrations. After the deploy, set the home page of the
+Google sign-in branding to `https://<site>/about`.
+
+### Added
+
+- `/about` says what maply is, how to play in Telegram and on the site, what
+  Google sign-in gives maply and where the panoramas come from, in all sixteen
+  languages, as plain HTML without a script. Google's brand review could not
+  read the home page, which is the Mini App, and refused the brand; `/about`
+  is the home page the sign-in screen names now.
+
+### Changed
+
+- The line that carries the DM keyboard ("Buttons below: play, today's result
+  and the menu") is deleted as soon as it is sent. The keyboard stays.
+
+## v0.1.0-rc.1 - 2026-11-23
+
+For the operator: no migrations. Pull the image from
+`ghcr.io/asterfield-dev/maply`; the places of the day from Ukraine are already
+in the production database and its image folder.
+
+### Changed
+
+- The texts say what they mean. The message field placeholder was "One
+  place a day, one pin"; it now says to press Play or send a location.
+  "Until the truth" is "until the result", the pin toasts and the loading
+  line say what happened instead of joking, and a quiet group is told how
+  to resume without a nap and an emoji. All sixteen languages.
+- Ukrainian calls the map pin "мітка" instead of "шпилька", and the
+  profile's "hide me" note no longer says that nobody, the owner
+  included, can open the profile.
+- The privacy page names the site by `APP_URL` instead of a fixed
+  `maply.ws04.cc`, so moving the domain needs no text change.
+- `harvest.py` counts why a region gave no frame (no frame since 2018, no
+  panorama, none at quality 0.7, too narrow, too soft, and so on), per country
+  of the plan, and prints it with `<out>/rejects.json`. A run that yields
+  nothing in a country now says at which step. `scripts/curation/test_curation.py`
+  checks offline which parts of Ukraine the plan covers and what the counter
+  reports.
+- Dependencies: chromedp 0.24.0, pgx 5.13.0, golang.org/x/image 0.48.0 and
+  golang.org/x/text 0.44.0.
+
+### Added
+
+- The privacy page says what the data is used for, what maply gets from
+  Google and how it is kept and erased, and who runs maply. Google's brand
+  verification asked for it.
+- Places of the day can come from Panoramax: `scripts/curation/harvest_px.py`
+  harvests a batch in the same layout as `harvest.py`, and `maply-places`
+  takes a Panoramax picture's direction as its heading and links its page.
+  Mapillary serves no image in Ukraine, so the first Ukrainian places of the
+  day, Kyiv and Kharkiv, come this way. Kharkiv itself is now inside the
+  curation's Ukrainian zone.
+
+## v0.1.0-beta.1 - 2026-11-23
+
+For the operator: this release applies migrations 031 and 032. Pull the image
+from `ghcr.io/asterfield-dev/maply`.
+
+### Changed
+
+- **Images are published as `ghcr.io/asterfield-dev/maply`.** The organization
+  was renamed, and GitHub Container Registry does not redirect the old name:
+  `ghcr.io/freshlabdev/maply` answers 403. Point the deployment's image at the
+  new path; every earlier digest is there under it too.
+- tg moves from `v0.1.0` to `v0.4.0-alpha.2`, whose module path is
+  `github.com/asterfield-dev/tg`. A press on a button under an inline message
+  now arrives without a message; maply sends none, so such a press is answered
+  and ignored.
+- Links, the module path and the docs point at `github.com/asterfield-dev`.
+  Old links still redirect.
+
+### Added
+
+- The DM has a keyboard under the message field: Play, Today's result and
+  Menu. The menu button there opens the Mini App and hides the command
+  list, so a new player had nothing to press after the first game. Today's
+  result says, before the evening, whether you have answered and how long
+  until the result, and after it your score and place in the world. The
+  keyboard follows a language change; groups never get it.
+- A group hears from maply the moment it is added: what maply is, when the
+  place and the answer come in the group's zone, and what comes next. A
+  group added after its 20:00 gets a warm-up on the newest day of the
+  archive, with its own result an hour later, so it has something to play
+  that evening. The warm-up counts nowhere: not in the day's tables, the
+  world, profiles, streaks or ratings. When maply may not pin in a
+  supergroup, the welcome asks the admins once, with a button that requests
+  just that right. `/start` in a group offers the warm-up while it runs.
+  For the operator: migration 031 adds the `warmup` tables and job kind.
+- maply stops posting into a group where nobody plays. After seven days
+  with the morning post and no answer from the group, it asks once, in
+  place of that day's intrigue, whether to keep sending places: "Keep
+  playing" (any member) or "Pause" (admins). With no press and no answer
+  for three days the group pauses itself and gets nothing until an admin
+  presses Resume under `/start`; the places come back the next morning.
+  Any answer from the group resets the count. For the operator: migration
+  032 adds the pause columns to `chat_settings`, and a pause is logged as
+  `group paused` with its cause.
+
 ## v0.0.1-alpha.20 - 2026-11-10
 
 For the operator: no migration and no new setting.
@@ -1274,7 +1394,7 @@ registered in BotFather (`/newapp`, short name `play`).
   description in all sixteen languages.
 - The Go service skeleton, built the way voicy and branchy are: validated
   environment, PostgreSQL in the `maply` schema with migrations embedded in the
-  binary, Telegram long polling through `FreshLabDev/tg` that records people
+  binary, Telegram long polling through `asterfield-dev/tg` that records people
   and groups in `core`, a `Preflight` check before polling starts, and
   `/healthz` reporting the database and polling freshness.
 - The game schema (`002_game.sql`): `place` with its curation status,

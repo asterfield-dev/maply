@@ -4,17 +4,18 @@ package bot
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"log/slog"
 	"sync"
 	"testing"
 	"time"
 
-	"github.com/FreshLabDev/tg"
+	"github.com/asterfield-dev/tg"
 
-	"github.com/FreshLabDev/maply/internal/db"
-	"github.com/FreshLabDev/maply/internal/round"
-	"github.com/FreshLabDev/maply/internal/telegram"
+	"github.com/asterfield-dev/maply/internal/db"
+	"github.com/asterfield-dev/maply/internal/round"
+	"github.com/asterfield-dev/maply/internal/telegram"
 )
 
 type touch struct {
@@ -36,11 +37,48 @@ type fakeStore struct {
 	settings map[int64]db.Settings
 	rounds   map[string]bool
 	guesses  []db.NewGuess
+	scored   map[int64]db.Guess
+	world    db.World
+	// warmDay is the archive's day a warm-up takes; zero has none.
+	warmDay   round.Date
+	warmups   map[int64]db.Warmup
+	jobs      []string
+	pinWarned map[int64]bool
+	// paused is the groups maply is paused in; asked those with the quiet
+	// question out.
+	paused map[int64]bool
+	asked  map[int64]bool
 }
 
 func newStore() *fakeStore {
 	return &fakeStore{userLang: map[int64]string{}, chatLang: map[int64]string{}, zones: map[int64]string{},
-		settings: map[int64]db.Settings{}, rounds: map[string]bool{}}
+		settings: map[int64]db.Settings{}, rounds: map[string]bool{},
+		warmups: map[int64]db.Warmup{}, pinWarned: map[int64]bool{},
+		paused: map[int64]bool{}, asked: map[int64]bool{}}
+}
+
+func (f *fakeStore) Paused(_ context.Context, id int64) (bool, error) { return f.paused[id], nil }
+
+func (f *fakeStore) KeepPlaying(_ context.Context, id int64) (bool, error) {
+	ok := f.asked[id] && !f.paused[id]
+	if ok {
+		f.asked[id] = false
+	}
+	return ok, nil
+}
+
+func (f *fakeStore) PauseGroup(_ context.Context, id int64, _ string) (int64, bool, error) {
+	if f.paused[id] {
+		return 0, false, nil
+	}
+	f.paused[id], f.asked[id] = true, false
+	return 0, true, nil
+}
+
+func (f *fakeStore) ResumeGroup(_ context.Context, id int64, _ time.Time) (bool, error) {
+	ok := f.paused[id]
+	f.paused[id] = false
+	return ok, nil
 }
 
 func (f *fakeStore) Offset(context.Context) (int64, error) {
@@ -140,6 +178,18 @@ func (f *fakeStore) Contexts(context.Context, int64) ([]db.Context, error) { ret
 func (f *fakeStore) Deadline(_ context.Context, _ round.Zones, _ int64, d round.Date, own *time.Location) (time.Time, error) {
 	return d.Reveal(own), nil
 }
+func (f *fakeStore) GuessOf(_ context.Context, d round.Date, userID int64) (db.Guess, bool, error) {
+	if g, ok := f.scored[userID]; ok {
+		return g, true, nil
+	}
+	for _, g := range f.guesses {
+		if g.UserID == userID && g.Date.String() == d.String() {
+			return db.Guess{UserID: userID, Pin: g.Pin, AnsweredAt: g.AnsweredAt}, true, nil
+		}
+	}
+	return db.Guess{}, false, nil
+}
+func (f *fakeStore) World(context.Context, round.Date) (db.World, error) { return f.world, nil }
 func (f *fakeStore) InsertGuess(_ context.Context, g db.NewGuess) error {
 	for _, old := range f.guesses {
 		if old.UserID == g.UserID && old.Date.String() == g.Date.String() {
@@ -148,6 +198,27 @@ func (f *fakeStore) InsertGuess(_ context.Context, g db.NewGuess) error {
 	}
 	f.guesses = append(f.guesses, g)
 	return nil
+}
+
+func (f *fakeStore) SetPinWarned(_ context.Context, id int64) error {
+	f.pinWarned[id] = true
+	return nil
+}
+func (f *fakeStore) PlanJob(_ context.Context, kind string, chatID int64, d round.Date, runAt time.Time) error {
+	f.jobs = append(f.jobs, fmt.Sprintf("%s:%s:%d@%s", kind, d, chatID, runAt.UTC().Format(time.RFC3339)))
+	return nil
+}
+func (f *fakeStore) StartWarmup(_ context.Context, id int64, closed round.Date, at time.Time) (db.Warmup, bool, error) {
+	if _, ok := f.warmups[id]; ok || f.warmDay.IsZero() || closed.Before(f.warmDay) {
+		return db.Warmup{}, false, nil
+	}
+	w := db.Warmup{ChatID: id, Day: f.warmDay, DayNo: 41, ResultAt: at}
+	f.warmups[id] = w
+	return w, true, nil
+}
+func (f *fakeStore) WarmupOf(_ context.Context, id int64) (db.Warmup, bool, error) {
+	w, ok := f.warmups[id]
+	return w, ok, nil
 }
 
 type sent struct {
@@ -176,6 +247,18 @@ type fakeTelegram struct {
 	animated     chan struct{} // told after each animation, when set
 	editErr      error         // every EditText fails with it, when set
 	threads      []int         // the forum topic of each send
+	keyboards    []keyboardSent
+}
+
+type keyboardSent struct {
+	chatID int64
+	text   string
+	kb     telegram.Keyboard
+}
+
+func (f *fakeTelegram) SendKeyboard(_ context.Context, chatID int64, text string, kb telegram.Keyboard) (tg.Message, error) {
+	f.keyboards = append(f.keyboards, keyboardSent{chatID, text, kb})
+	return tg.Message{MessageID: 101, Chat: tg.Chat{ID: chatID}, Text: text}, nil
 }
 
 func (f *fakeTelegram) EditAnimation(_ context.Context, chatID, messageID int64, a telegram.Animation, caption string, markup telegram.Markup) (tg.Message, error) {

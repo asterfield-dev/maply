@@ -9,12 +9,13 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/FreshLabDev/tg"
+	"github.com/asterfield-dev/tg"
 
-	"github.com/FreshLabDev/maply/internal/db"
-	"github.com/FreshLabDev/maply/internal/round"
-	"github.com/FreshLabDev/maply/internal/schedule"
-	"github.com/FreshLabDev/maply/internal/telegram"
+	"github.com/asterfield-dev/maply/internal/auth"
+	"github.com/asterfield-dev/maply/internal/db"
+	"github.com/asterfield-dev/maply/internal/round"
+	"github.com/asterfield-dev/maply/internal/schedule"
+	"github.com/asterfield-dev/maply/internal/telegram"
 )
 
 type Store interface {
@@ -44,6 +45,18 @@ type Store interface {
 	Contexts(ctx context.Context, userID int64) ([]db.Context, error)
 	Deadline(ctx context.Context, zones round.Zones, userID int64, d round.Date, own *time.Location) (time.Time, error)
 	InsertGuess(ctx context.Context, g db.NewGuess) error
+	GuessOf(ctx context.Context, d round.Date, userID int64) (db.Guess, bool, error)
+	World(ctx context.Context, d round.Date) (db.World, error)
+
+	SetPinWarned(ctx context.Context, chatID int64) error
+	PlanJob(ctx context.Context, kind string, chatID int64, d round.Date, runAt time.Time) error
+	StartWarmup(ctx context.Context, chatID int64, closed round.Date, resultAt time.Time) (db.Warmup, bool, error)
+	WarmupOf(ctx context.Context, chatID int64) (db.Warmup, bool, error)
+
+	Paused(ctx context.Context, chatID int64) (bool, error)
+	KeepPlaying(ctx context.Context, chatID int64) (bool, error)
+	PauseGroup(ctx context.Context, chatID int64, by string) (int64, bool, error)
+	ResumeGroup(ctx context.Context, chatID int64, at time.Time) (bool, error)
 }
 
 type Telegram interface {
@@ -52,6 +65,7 @@ type Telegram interface {
 	SetMyCommandsForScope(ctx context.Context, commands []tg.BotCommand, scope *tg.BotCommandScope) error
 	SendText(ctx context.Context, chatID int64, text string, markup telegram.Markup) (tg.Message, error)
 	SendTextIn(ctx context.Context, chatID int64, thread int, text string, markup telegram.Markup) (tg.Message, error)
+	SendKeyboard(ctx context.Context, chatID int64, text string, kb telegram.Keyboard) (tg.Message, error)
 	EditText(ctx context.Context, chatID, messageID int64, text string, markup telegram.Markup) error
 	EditAnimation(ctx context.Context, chatID, messageID int64, a telegram.Animation, caption string, markup telegram.Markup) (tg.Message, error)
 	DeleteMessage(ctx context.Context, chatID, messageID int64) error
@@ -75,6 +89,9 @@ type Options struct {
 	// Profiles draws the statistics picture; nil shows the statistics as
 	// text only.
 	Profiles Profiles
+	// Payloads signs the link of a group's warm-up; nil leaves the warm-up
+	// without its button.
+	Payloads *auth.Signer
 	// World refreshes the world picture of a DM's result; nil leaves its
 	// Refresh button doing nothing.
 	World WorldRefresher
@@ -229,8 +246,12 @@ func (b *Bot) handle(ctx context.Context, u tg.Update) {
 	}
 	var err error
 	switch {
+	// The keyboard's buttons come as plain messages, so they are read before
+	// any other text and count as nothing else.
+	case u.Message != nil && keyOf(u.Message) != "":
+		err = b.onKey(ctx, u.Message, keyOf(u.Message))
 	case u.Message != nil && b.isStart(u.Message):
-		err = b.sendHome(ctx, u.Message)
+		err = b.onStart(ctx, u.Message)
 	case u.Message != nil && u.Message.Chat.Type == "private":
 		if p, ok := locationOf(u.Message); ok {
 			err = b.onLocation(ctx, u.Message, p)

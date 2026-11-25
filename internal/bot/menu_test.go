@@ -11,12 +11,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/FreshLabDev/tg"
+	"github.com/asterfield-dev/tg"
 
-	"github.com/FreshLabDev/maply/internal/db"
-	"github.com/FreshLabDev/maply/internal/i18n"
-	"github.com/FreshLabDev/maply/internal/round"
-	"github.com/FreshLabDev/maply/internal/telegram"
+	"github.com/asterfield-dev/maply/internal/db"
+	"github.com/asterfield-dev/maply/internal/i18n"
+	"github.com/asterfield-dev/maply/internal/round"
+	"github.com/asterfield-dev/maply/internal/telegram"
 )
 
 // A Telegram user id is up to 52 bits; the longest owner keeps every callback
@@ -45,7 +45,7 @@ func everyPanel(t *testing.T, v view) []drawn {
 	median := 1234.4
 	var out []drawn
 	add := func(name string, text string, m telegram.Markup) { out = append(out, drawn{name, text, m}) }
-	text, m := v.home("https://maply.example/", true, "Europe/Kyiv")
+	text, m := v.home("https://maply.example/", true, "Europe/Kyiv", "")
 	add("home", text, m)
 	text, m = v.help()
 	add("help", text, m)
@@ -137,18 +137,18 @@ func TestCloseOnlyInGroups(t *testing.T) {
 
 func TestHome(t *testing.T) {
 	dm := view{lang: "en", owner: 1, sc: scopePrivate}
-	_, m := dm.home("https://maply.example/", false, "Europe/Kyiv")
+	_, m := dm.home("https://maply.example/", false, "Europe/Kyiv", "")
 	play := m[0][0]
 	if play.WebApp != "https://maply.example/" || play.Style != tg.StylePrimary {
 		t.Fatalf("play = %+v", play)
 	}
-	if _, m := dm.home("", false, "Europe/Kyiv"); m[0][0].WebApp != "" {
+	if _, m := dm.home("", false, "Europe/Kyiv", ""); m[0][0].WebApp != "" {
 		t.Fatal("a home without APP_URL offered Play")
 	}
 
 	group := view{lang: "en", owner: 1, sc: scopeGroup}
-	_, member := group.home("https://maply.example/", false, "Europe/Kyiv")
-	_, admin := group.home("https://maply.example/", true, "Europe/Kyiv")
+	_, member := group.home("https://maply.example/", false, "Europe/Kyiv", "")
+	_, admin := group.home("https://maply.example/", true, "Europe/Kyiv", "")
 	if has(member, actSettings) || !has(admin, actSettings) {
 		t.Fatal("Settings must be on an admin's group home and only there")
 	}
@@ -249,7 +249,7 @@ func press(chat tg.Chat, from tg.User, data string) tg.Update {
 	raw, _ := json.Marshal(map[string]any{"reply_markup": map[string]any{
 		"inline_keyboard": [][]map[string]string{{{"text": "x", "callback_data": data}}}}})
 	return tg.Update{Callback: &tg.CallbackQuery{ID: "q", From: from, Data: data,
-		Message: tg.Message{MessageID: 100, Chat: chat, Text: "maply", Raw: raw}}}
+		Message: &tg.Message{MessageID: 100, Chat: chat, Text: "maply", Raw: raw}}}
 }
 
 var (

@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/FreshLabDev/maply/internal/i18n"
+	"github.com/asterfield-dev/maply/internal/i18n"
 )
 
 func TestReturnToStaysAPathOnTheSite(t *testing.T) {
@@ -127,12 +127,33 @@ func TestPrivacyGivesTheOwnersTelegram(t *testing.T) {
 		svc.Privacy().ServeHTTP(rec, httptest.NewRequest("GET", "/privacy?lang="+lang, nil))
 		body := rec.Body.String()
 		if rec.Code != http.StatusOK || strings.Count(body, `<a href="https://t.me/amtiyo" dir="ltr">@amtiyo</a>`) != 1 ||
-			strings.Contains(body, "{contact}") || strings.Contains(body, "github.com") || strings.Contains(body, "&lt;a") {
+			strings.Contains(body, "{contact}") || strings.Contains(body, "github.com") || strings.Contains(body, "&lt;a href") {
 			t.Errorf("privacy in %s = %d, the contact is missing or broken", lang, rec.Code)
 		}
 		// Navigation is not CSP's to stop, and nothing here may name a target.
 		if csp := rec.Header().Get("Content-Security-Policy"); strings.Contains(csp, "navigate-to") || strings.Contains(body, "target=") {
 			t.Errorf("privacy in %s: CSP %q or a target on a link", lang, csp)
+		}
+	}
+}
+
+// The page names the site by APP_URL, so a move of the domain needs no text
+// change; without APP_URL it names the host it was asked on.
+func TestPrivacyNamesTheSiteFromAppURL(t *testing.T) {
+	for _, tc := range []struct{ appURL, host, want string }{
+		{"https://maply.example.org/", "other.example", "maply.example.org"},
+		{"", "maply.example.net", "maply.example.net"},
+	} {
+		svc := New(Config{Key: []byte("k1"), AppURL: tc.appURL})
+		for _, lang := range i18n.Codes() {
+			rec := httptest.NewRecorder()
+			req := httptest.NewRequest("GET", "/privacy?lang="+lang, nil)
+			req.Host = tc.host
+			svc.Privacy().ServeHTTP(rec, req)
+			body := rec.Body.String()
+			if !strings.Contains(body, tc.want) || strings.Contains(body, "{site}") || strings.Contains(body, "ws04.cc") {
+				t.Errorf("privacy in %s with APP_URL %q does not name %s", lang, tc.appURL, tc.want)
+			}
 		}
 	}
 }
@@ -173,6 +194,33 @@ func TestARequestThatSignsForItselfIsNobodyOnTheSite(t *testing.T) {
 		})).ServeHTTP(httptest.NewRecorder(), req)
 		if !ok || got.Player != "" || got.SignedIn() || got.TelegramUserID != 0 {
 			t.Errorf("Authorization %q: viewer %+v, ok %v", auth, got, ok)
+		}
+	}
+}
+
+// The about page is the home page Google's brand review reads: it names the
+// app and the site, links the privacy page in its language and the owner's
+// Telegram, and leaves no placeholder behind.
+func TestAboutExplainsTheAppWithoutScript(t *testing.T) {
+	svc := New(Config{Key: []byte("k1"), AppURL: "https://maply.example.org/"})
+	for _, lang := range i18n.Codes() {
+		rec := httptest.NewRecorder()
+		svc.About().ServeHTTP(rec, httptest.NewRequest("GET", "/about?lang="+lang, nil))
+		body := rec.Body.String()
+		if rec.Code != http.StatusOK || !strings.Contains(body, "<h1>maply") {
+			t.Errorf("about in %s = %d without the app's name as its title", lang, rec.Code)
+		}
+		for _, want := range []string{
+			`<a href="https://t.me/amtiyo" dir="ltr">@amtiyo</a>`,
+			`<a href="/privacy?lang=` + lang + `">`,
+			"maply.example.org", "@maplyin_bot", "openid", `href="/about?lang=ar"`,
+		} {
+			if strings.Count(body, want) != 1 {
+				t.Errorf("about in %s has %q %d times, want once", lang, want, strings.Count(body, want))
+			}
+		}
+		if strings.Contains(body, "{site}") || strings.Contains(body, "{privacy}") || strings.Contains(body, "{contact}") || strings.Contains(body, "<script") || strings.Contains(body, "&lt;a") {
+			t.Errorf("about in %s leaves a placeholder, a script or an escaped link", lang)
 		}
 	}
 }

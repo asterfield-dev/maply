@@ -34,14 +34,14 @@ player, and production-minded.
   photographs it, and `schedule` sends the PNG. Any renderer failure falls back
   to the place's photo; never let the card block the result. The Mini App
   forwards the same card with `shareMessage` through `POST /api/share`.
-- The service will be one Go binary (module `github.com/FreshLabDev/maply`): the
+- The service will be one Go binary (module `github.com/asterfield-dev/maply`): the
   bot with its scheduler, the HTTP API, the static Mini App and the place
   images, all from one process behind a Cloudflare Tunnel at `maply.ws04.cc`.
 - PostgreSQL is the only durable store. Domain tables live in a `maply` schema
   on the shared `core-postgres`, reached as `maply_core`. Telegram identity,
   presence and language are delegated to `core` through `core.touch` and
   `core.effective_language`, never by writing `core.*` tables directly.
-- Telegram goes through `github.com/FreshLabDev/tg`. What `tg` lacks (the
+- Telegram goes through `github.com/asterfield-dev/tg`. What `tg` lacks (the
   `web_app` button, pin and unpin, `setChatMenuButton`,
   `savePreparedInlineMessage`) is called through `Client.Call` until typed
   methods land in `tg`. A `tg` release needs separate permission. Long polling
@@ -63,6 +63,12 @@ player, and production-minded.
   count. Do not add a fourth: the rules in a group's first post and the
   admins' note when maply may not pin go into the post itself, and so does
   the month's season champion, in the look back of the month's last day.
+  The welcome when maply is added answers the admin, as `/start` does, and
+  is not one of the three. A group added after its reveal gets a warm-up on
+  the archive's newest day and its result an hour later, the only scheduled
+  message of that day (`docs/design.md` → "Groups"). A group quiet for
+  seven days gets its question to keep playing in place of the intrigue,
+  and a paused group gets nothing (`chat_settings.paused_at`).
 - Posts write the reveal with the chat's zone, "20:00 (Kyiv)". A chat's zone is
   stored the first time maply needs it (`FixZone`), so a later change of
   language cannot move a reveal. A DM's stored this way is marked automatic
@@ -99,10 +105,11 @@ player, and production-minded.
 - Free play (`internal/free`, `/play`, `/party/<code>`; the archive and a
   challenge are screens inside `/play`) is outside the day:
   its own `free_*` tables, no place in the world, no stats shared with the
-  day, and no bot message in groups. Its rules are in `docs/design.md` →
-  "Free play". Records and friends need an account: a Telegram person (the
-  Mini App, or the site with an account that has Telegram, which plays as
-  the person and writes nothing to `core`) or an account with Google alone,
+  day, and no bot message in groups but a new group's warm-up result. Its
+  rules are in `docs/design.md` → "Free play". Records and friends need an
+  account: a Telegram person (the Mini App, or the site with an account
+  that has Telegram, which plays as the person and writes nothing to
+  `core`) or an account with Google alone,
   which plays as its own site player. A guest plays alone, without records.
   Its leaderboards (`/api/top`) count only games on a timer and never an
   attempt at a challenge, one row a person or an account with their best:
@@ -395,7 +402,7 @@ the diff looks like.
 ## Planning
 
 - Tasks and their status live in GitHub issues on the family's
-  [Asterfield board](https://github.com/orgs/FreshLabDev/projects/4) (its
+  [Asterfield board](https://github.com/orgs/asterfield-dev/projects/4) (its
   maply tab), not in files. A stage is a milestone of this repository (MVP,
   After MVP); the board's Status, Area and Size fields say where a task
   stands, which part of the service it touches and how big it is.

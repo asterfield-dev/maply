@@ -7,10 +7,10 @@ import (
 	"log/slog"
 	"testing"
 
-	"github.com/FreshLabDev/tg"
+	"github.com/asterfield-dev/tg"
 
-	"github.com/FreshLabDev/maply/internal/round"
-	"github.com/FreshLabDev/maply/internal/schedule"
+	"github.com/asterfield-dev/maply/internal/round"
+	"github.com/asterfield-dev/maply/internal/schedule"
 )
 
 type fakeRefresher struct {
@@ -29,7 +29,7 @@ func TestRefreshWorld(t *testing.T) {
 	d := round.NewDate(2026, 11, 2)
 	press := func(chat tg.Chat, from int64) *tg.CallbackQuery {
 		return &tg.CallbackQuery{ID: "q", From: tg.User{ID: from, LanguageCode: "en"}, Data: "wr:" + d.String(),
-			Message: tg.Message{MessageID: 5, Chat: chat}}
+			Message: &tg.Message{MessageID: 5, Chat: chat}}
 	}
 	for _, c := range []struct {
 		name  string
@@ -38,9 +38,9 @@ func TestRefreshWorld(t *testing.T) {
 		calls int
 		toast string
 	}{
-		{"drawing", schedule.RefreshDrawing, press(tg.Chat{ID: 9, Type: "private"}, 9), 1, "Drawing the map with the new answers, this takes up to a minute."},
+		{"drawing", schedule.RefreshDrawing, press(tg.Chat{ID: 9, Type: "private"}, 9), 1, "Updating the map with the new answers. This takes up to a minute."},
 		{"nothing new", schedule.RefreshSame, press(tg.Chat{ID: 9, Type: "private"}, 9), 1, "No new answers yet."},
-		{"final", schedule.RefreshFinal, press(tg.Chat{ID: 9, Type: "private"}, 9), 1, "World places are final now."},
+		{"final", schedule.RefreshFinal, press(tg.Chat{ID: 9, Type: "private"}, 9), 1, "The world ranking is final now."},
 		{"gone", schedule.RefreshGone, press(tg.Chat{ID: 9, Type: "private"}, 9), 1, ""},
 		{"in a group", schedule.RefreshDrawing, press(tg.Chat{ID: -100, Type: "supergroup"}, 9), 0, ""},
 	} {

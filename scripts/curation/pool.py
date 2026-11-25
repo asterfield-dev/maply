@@ -25,7 +25,7 @@ import avoid
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 BORDERS = os.path.join(HERE, "..", "..", "internal", "geo", "countries.geojson.gz")
-UA = "maply-curation/0 (+https://github.com/FreshLabDev/maply)"
+UA = "maply-curation/0 (+https://github.com/asterfield-dev/maply)"
 
 # Where a random frame is likely to exist on Mapillary and be safe to show,
 # with a weight for how often the country comes up.
@@ -76,6 +76,10 @@ def allowed(iso, lat, lon):
     near them, disputed land, and far islands of another continent."""
     if iso == "UA":
         # West and centre only: no front line, no occupied land, no Crimea.
+        # Kharkiv itself is in (owner decision, 2026-11-23): the city, not
+        # the region around it, which runs up to the front and the border.
+        if abs(lat - 49.99) < 0.12 and abs(lon - 36.23) < 0.2:
+            return True
         return (lon < 32.5 and lat > 47.0) or (lon < 31.0 and lat > 45.6)
     if iso == "RU":
         if lon < 40 and lat < 54:  # the regions along the Ukrainian border
